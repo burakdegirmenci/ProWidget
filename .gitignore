@@ -72,3 +72,8 @@ temp/
 secrets/
 credentials/
 nul
+
+# Local/Personal files
+.claude/
+Promts/
+*tmplogin.json
