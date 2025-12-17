@@ -134,13 +134,10 @@ services:
 networks:
   pwx-network:
     driver: bridge
-    name: pwx-network
 
 # ================================
 # Volumes
 # ================================
 volumes:
   postgres_data:
-    name: pwx-postgres-data
   redis_data:
-    name: pwx-redis-data
