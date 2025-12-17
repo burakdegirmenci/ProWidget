@@ -3,7 +3,13 @@ set -e
 
 echo "Starting ProWidget Backend..."
 echo "NODE_ENV: $NODE_ENV"
-echo "DATABASE_URL exists: $(if [ -n "$DATABASE_URL" ]; then echo 'yes'; else echo 'NO - MISSING!'; fi)"
+
+# Check DATABASE_URL
+if [ -z "$DATABASE_URL" ]; then
+    echo "ERROR: DATABASE_URL is not set!"
+    exit 1
+fi
+echo "DATABASE_URL is set"
 
 # Run Prisma migrations
 echo "Running Prisma migrations..."
