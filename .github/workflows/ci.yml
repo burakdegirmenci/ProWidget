@@ -75,7 +75,7 @@ jobs:
           NODE_ENV: test
 
       - name: Upload coverage
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v5
         with:
           directory: ./backend/coverage
           flags: backend
@@ -116,7 +116,7 @@ jobs:
         run: npm run build
 
       - name: Upload coverage
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v5
         with:
           directory: ./cdn/coverage
           flags: cdn
@@ -163,7 +163,7 @@ jobs:
           NEXT_PUBLIC_API_URL: http://localhost:3000
 
       - name: Upload coverage
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v5
         with:
           directory: ./admin-panel/coverage
           flags: admin
