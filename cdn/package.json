@@ -1,0 +1,45 @@
+{
+  "name": "@prowidget/cdn",
+  "version": "1.0.0",
+  "description": "ProWidget CDN Widget Framework",
+  "main": "dist/pwx.min.js",
+  "module": "src/core/init.js",
+  "scripts": {
+    "build": "rollup -c",
+    "build:watch": "rollup -c -w",
+    "build:prod": "NODE_ENV=production rollup -c",
+    "lint": "eslint src/",
+    "test": "jest"
+  },
+  "keywords": [
+    "widgets",
+    "ecommerce",
+    "cdn",
+    "carousel",
+    "popup"
+  ],
+  "author": "ProWidget",
+  "license": "UNLICENSED",
+  "private": true,
+  "devDependencies": {
+    "@rollup/plugin-terser": "^0.4.4",
+    "@rollup/plugin-node-resolve": "^15.2.3",
+    "@rollup/plugin-commonjs": "^25.0.7",
+    "@rollup/plugin-babel": "^6.0.4",
+    "@babel/core": "^7.23.7",
+    "@babel/preset-env": "^7.23.8",
+    "rollup": "^4.9.6",
+    "rollup-plugin-postcss": "^4.0.2",
+    "postcss": "^8.4.33",
+    "cssnano": "^6.0.3",
+    "eslint": "^8.56.0",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "babel-jest": "^29.7.0"
+  },
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead"
+  ]
+}

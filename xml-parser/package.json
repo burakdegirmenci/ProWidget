@@ -1,0 +1,39 @@
+{
+  "name": "prowidget-xml-parser",
+  "version": "1.0.0",
+  "description": "ProWidget XML Feed Parser & Scheduler Service",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "sync": "node index.js --mode=once",
+    "sync:customer": "node index.js --mode=single --customer=",
+    "scheduler": "node index.js --mode=scheduler",
+    "dev": "nodemon index.js --mode=scheduler",
+    "test": "jest"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "axios": "^1.7.7",
+    "dotenv": "^16.4.5",
+    "fast-xml-parser": "^4.5.0",
+    "node-cron": "^3.0.3",
+    "winston": "^3.15.0",
+    "yargs": "^17.7.2"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "nodemon": "^3.1.7",
+    "prisma": "^5.22.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "keywords": [
+    "xml",
+    "parser",
+    "feed",
+    "scheduler"
+  ],
+  "author": "ProWidget Team",
+  "license": "MIT"
+}

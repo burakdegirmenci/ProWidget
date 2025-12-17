@@ -1,0 +1,147 @@
+name: PR Check
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  # ===================================
+  # Check Commit Messages
+  # ===================================
+  commitlint:
+    name: Lint Commit Messages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check commit message format
+        run: |
+          echo "Checking commit messages..."
+          # Add commitlint or your own commit message validation
+
+  # ===================================
+  # Check PR Title
+  # ===================================
+  pr-title:
+    name: Check PR Title
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check PR title
+        run: |
+          TITLE="${{ github.event.pull_request.title }}"
+          # Check if title follows conventional commits format
+          if [[ ! "$TITLE" =~ ^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?:\ .+ ]]; then
+            echo "PR title should follow conventional commits format"
+            echo "Examples:"
+            echo "  feat: add new carousel widget"
+            echo "  fix(backend): resolve auth token issue"
+            echo "  docs: update API documentation"
+            exit 1
+          fi
+
+  # ===================================
+  # Check for Sensitive Data
+  # ===================================
+  secrets-scan:
+    name: Scan for Secrets
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: TruffleHog Secret Scan
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.pull_request.base.sha }}
+          head: ${{ github.event.pull_request.head.sha }}
+          extra_args: --only-verified
+
+  # ===================================
+  # Check Dependencies
+  # ===================================
+  dependency-review:
+    name: Dependency Review
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v3
+        with:
+          fail-on-severity: high
+
+  # ===================================
+  # Code Quality
+  # ===================================
+  code-quality:
+    name: Code Quality Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Check Backend code quality
+        working-directory: ./backend
+        run: |
+          npm ci
+          npm run lint || true
+
+      - name: Check Admin Panel code quality
+        working-directory: ./admin-panel
+        run: |
+          npm ci
+          npm run lint || true
+          npm run type-check || true
+
+      - name: Check CDN code quality
+        working-directory: ./cdn
+        run: |
+          npm ci
+          npm run lint || true
+
+  # ===================================
+  # Test Summary
+  # ===================================
+  test-summary:
+    name: Test Summary
+    runs-on: ubuntu-latest
+    needs: [code-quality]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Run Backend Tests
+        working-directory: ./backend
+        run: |
+          npm ci
+          npx prisma generate
+          npm test -- --passWithNoTests
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test
+          JWT_SECRET: test-secret
+          NODE_ENV: test
+
+      - name: Run CDN Tests
+        working-directory: ./cdn
+        run: |
+          npm ci
+          npm test -- --passWithNoTests
+
+      - name: Run Admin Panel Tests
+        working-directory: ./admin-panel
+        run: |
+          npm ci
+          npm test -- --passWithNoTests

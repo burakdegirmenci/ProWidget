@@ -1,0 +1,73 @@
+# ================================
+# ProWidget Backend Dockerfile
+# Multi-stage build for production
+# ================================
+
+# Stage 1: Dependencies
+FROM node:18-alpine AS deps
+
+WORKDIR /app
+
+# Install dependencies for native modules and Prisma
+RUN apk add --no-cache libc6-compat openssl openssl-dev
+
+# Copy package files
+COPY backend/package*.json ./
+
+# Install dependencies (include dev deps for prisma generate)
+RUN npm ci && npm cache clean --force
+
+# Stage 2: Builder
+FROM node:18-alpine AS builder
+
+WORKDIR /app
+
+# Install OpenSSL for Prisma
+RUN apk add --no-cache openssl openssl-dev
+
+# Copy dependencies from deps stage
+COPY --from=deps /app/node_modules ./node_modules
+
+# Copy source code
+COPY backend/ ./
+
+# Generate Prisma client
+RUN npx prisma generate
+
+# Stage 3: Production
+FROM node:18-alpine AS runner
+
+WORKDIR /app
+
+# Install OpenSSL for Prisma runtime
+RUN apk add --no-cache openssl
+
+# Create non-root user for security
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 expressjs
+
+# Set environment
+ENV NODE_ENV=production
+ENV PORT=3000
+
+# Copy necessary files
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/src ./src
+COPY --from=builder /app/server.js ./server.js
+COPY --from=builder /app/package.json ./package.json
+
+# Change ownership to non-root user
+RUN chown -R expressjs:nodejs /app
+
+USER expressjs
+
+# Expose port
+EXPOSE 3000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1
+
+# Start command - runs migrations then starts server
+CMD ["sh", "-c", "npx prisma migrate deploy && node server.js"]

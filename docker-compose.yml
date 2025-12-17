@@ -1,0 +1,146 @@
+# ================================
+# ProWidget Docker Compose
+# Development & Production Setup
+# ================================
+
+version: '3.8'
+
+services:
+  # ================================
+  # PostgreSQL Database
+  # ================================
+  db:
+    image: postgres:15-alpine
+    container_name: pwx-database
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-pwx_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pwx_password}
+      POSTGRES_DB: ${POSTGRES_DB:-prowidget}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    networks:
+      - pwx-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pwx_user} -d ${POSTGRES_DB:-prowidget}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ================================
+  # Backend API
+  # ================================
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: pwx-backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: 3000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-pwx_user}:${POSTGRES_PASSWORD:-pwx_password}@db:5432/${POSTGRES_DB:-prowidget}?schema=public
+      JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3001,http://localhost:5173}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    ports:
+      - "${BACKEND_PORT:-3000}:3000"
+    networks:
+      - pwx-network
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ================================
+  # Admin Panel (Next.js)
+  # ================================
+  admin:
+    build:
+      context: .
+      dockerfile: Dockerfile.admin
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3000}
+    container_name: pwx-admin
+    restart: unless-stopped
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: 3001
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3000}
+    ports:
+      - "${ADMIN_PORT:-3001}:3001"
+    networks:
+      - pwx-network
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  # ================================
+  # XML Parser (Scheduler)
+  # ================================
+  xml-parser:
+    build:
+      context: .
+      dockerfile: Dockerfile.xml-parser
+    container_name: pwx-xml-parser
+    restart: unless-stopped
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-pwx_user}:${POSTGRES_PASSWORD:-pwx_password}@db:5432/${POSTGRES_DB:-prowidget}?schema=public
+      SYNC_CRON_SCHEDULE: ${SYNC_CRON_SCHEDULE:-*/15 * * * *}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    networks:
+      - pwx-network
+    depends_on:
+      db:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+
+  # ================================
+  # Redis (Optional - for caching)
+  # ================================
+  redis:
+    image: redis:7-alpine
+    container_name: pwx-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    networks:
+      - pwx-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    profiles:
+      - with-cache
+
+# ================================
+# Networks
+# ================================
+networks:
+  pwx-network:
+    driver: bridge
+    name: pwx-network
+
+# ================================
+# Volumes
+# ================================
+volumes:
+  postgres_data:
+    name: pwx-postgres-data
+  redis_data:
+    name: pwx-redis-data

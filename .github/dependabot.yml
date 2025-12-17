@@ -1,0 +1,90 @@
+version: 2
+updates:
+  # Backend dependencies
+  - package-ecosystem: "npm"
+    directory: "/backend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "backend"
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      production-dependencies:
+        patterns:
+          - "*"
+        exclude-patterns:
+          - "@types/*"
+          - "eslint*"
+          - "jest*"
+          - "typescript"
+
+  # Admin Panel dependencies
+  - package-ecosystem: "npm"
+    directory: "/admin-panel"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "admin-panel"
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      next-ecosystem:
+        patterns:
+          - "next*"
+          - "react*"
+          - "@next/*"
+
+  # CDN dependencies
+  - package-ecosystem: "npm"
+    directory: "/cdn"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "cdn"
+    commit-message:
+      prefix: "chore(deps)"
+
+  # XML Parser dependencies
+  - package-ecosystem: "npm"
+    directory: "/xml-parser"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "xml-parser"
+    commit-message:
+      prefix: "chore(deps)"
+
+  # Docker images
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "docker"
+    commit-message:
+      prefix: "chore(docker)"
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "ci"
+    commit-message:
+      prefix: "chore(ci)"

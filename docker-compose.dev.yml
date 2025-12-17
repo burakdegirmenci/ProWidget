@@ -1,0 +1,86 @@
+# ================================
+# ProWidget Docker Compose
+# Development Override
+# ================================
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+version: '3.8'
+
+services:
+  # ================================
+  # Database - expose for local tools
+  # ================================
+  db:
+    ports:
+      - "5432:5432"
+
+  # ================================
+  # Backend - development mode
+  # ================================
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+      target: builder  # Use builder stage for dev
+    environment:
+      NODE_ENV: development
+      LOG_LEVEL: debug
+    volumes:
+      - ./backend/src:/app/src:ro
+      - ./backend/prisma:/app/prisma:ro
+    command: ["sh", "-c", "npx prisma migrate deploy && npm run dev"]
+
+  # ================================
+  # Admin - development mode
+  # ================================
+  admin:
+    build:
+      context: .
+      dockerfile: Dockerfile.admin
+      target: deps  # Use deps stage for dev
+    environment:
+      NODE_ENV: development
+    volumes:
+      - ./admin-panel/src:/app/src:ro
+      - ./admin-panel/public:/app/public:ro
+      - ./admin-panel/next.config.js:/app/next.config.js:ro
+      - ./admin-panel/tsconfig.json:/app/tsconfig.json:ro
+      - ./admin-panel/tailwind.config.ts:/app/tailwind.config.ts:ro
+      - ./admin-panel/postcss.config.js:/app/postcss.config.js:ro
+    command: ["npm", "run", "dev"]
+
+  # ================================
+  # XML Parser - development mode
+  # ================================
+  xml-parser:
+    environment:
+      NODE_ENV: development
+      LOG_LEVEL: debug
+    volumes:
+      - ./xml-parser/src:/app/src:ro
+    # Run once instead of scheduler for dev testing
+    command: ["node", "index.js", "--mode=scheduler"]
+
+  # ================================
+  # pgAdmin - Database GUI
+  # ================================
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: pwx-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@prowidget.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin123}
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "${PGADMIN_PORT:-5050}:80"
+    networks:
+      - pwx-network
+    depends_on:
+      - db
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+
+volumes:
+  pgadmin_data:
+    name: pwx-pgadmin-data

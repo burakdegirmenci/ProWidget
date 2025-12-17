@@ -1,0 +1,321 @@
+// ===========================================
+// ProWidget - Prisma Schema
+// ===========================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ===========================================
+// ENUMS
+// ===========================================
+
+enum UserRole {
+  admin
+  editor
+  viewer
+}
+
+enum WidgetType {
+  carousel
+  banner
+  popup
+  grid
+  slider
+  custom
+}
+
+enum FeedFormat {
+  google
+  facebook
+  custom
+}
+
+enum FeedStatus {
+  active
+  error
+  pending
+  syncing
+}
+
+enum StockStatus {
+  in_stock
+  out_of_stock
+  preorder
+}
+
+// ===========================================
+// MODELS
+// ===========================================
+
+/// Admin panel users
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  passwordHash  String    @map("password_hash")
+  role          UserRole  @default(viewer)
+  firstName     String?   @map("first_name")
+  lastName      String?   @map("last_name")
+  isActive      Boolean   @default(true) @map("is_active")
+  lastLoginAt   DateTime? @map("last_login_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  refreshTokens RefreshToken[]
+
+  @@map("users")
+}
+
+/// JWT Refresh tokens for secure authentication
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String   @map("user_id")
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@map("refresh_tokens")
+}
+
+/// Customer websites using ProWidget
+model Customer {
+  id          String   @id @default(uuid())
+  name        String
+  slug        String   @unique
+  domain      String?
+  apiKey      String   @unique @map("api_key")
+  isActive    Boolean  @default(true) @map("is_active")
+  description String?
+  logoUrl     String?  @map("logo_url")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  widgetConfigs   WidgetConfig[]
+  themes          Theme[]
+  xmlFeeds        XmlFeed[]
+  products        Product[]
+  feedCache       FeedCache?
+  customTemplates CustomTemplate[]
+  abTests         ABTest[]
+
+  @@index([slug])
+  @@index([apiKey])
+  @@map("customers")
+}
+
+/// Widget configurations for customers
+model WidgetConfig {
+  id         String     @id @default(uuid())
+  customerId String     @map("customer_id")
+  type       WidgetType
+  name       String
+  settings   Json       @default("{}")
+  placement  String?
+  isActive   Boolean    @default(true) @map("is_active")
+  priority   Int        @default(0)
+  templateId String?    @map("template_id")
+  customData Json?      @map("custom_data")
+  createdAt  DateTime   @default(now()) @map("created_at")
+  updatedAt  DateTime   @updatedAt @map("updated_at")
+
+  // Relations
+  customer Customer        @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  template CustomTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+
+  @@index([customerId])
+  @@index([type])
+  @@index([templateId])
+  @@map("widget_configs")
+}
+
+/// Custom widget templates with HTML/CSS
+model CustomTemplate {
+  id           String   @id @default(uuid())
+  customerId   String   @map("customer_id")
+  name         String
+  description  String?
+  htmlTemplate String   @map("html_template") @db.Text
+  cssStyles    String?  @map("css_styles") @db.Text
+  dataSchema   Json     @default("{}") @map("data_schema")
+  defaultData  Json     @default("{}") @map("default_data")
+  isGlobal     Boolean  @default(false) @map("is_global")
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  customer      Customer       @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  widgetConfigs WidgetConfig[]
+
+  @@index([customerId])
+  @@index([isGlobal])
+  @@map("custom_templates")
+}
+
+/// Theme configurations for customer widgets
+model Theme {
+  id              String   @id @default(uuid())
+  customerId      String   @map("customer_id")
+  name            String
+  primaryColor    String   @default("#000000") @map("primary_color")
+  secondaryColor  String   @default("#ffffff") @map("secondary_color")
+  backgroundColor String   @default("#ffffff") @map("background_color")
+  textColor       String   @default("#333333") @map("text_color")
+  fontFamily      String   @default("inherit") @map("font_family")
+  borderRadius    String   @default("8px") @map("border_radius")
+  cssVariables    Json     @default("{}") @map("css_variables")
+  customCss       String?  @map("custom_css")
+  isActive        Boolean  @default(false) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+  @@map("themes")
+}
+
+/// XML feed sources for product data
+model XmlFeed {
+  id           String     @id @default(uuid())
+  customerId   String     @map("customer_id")
+  name         String
+  url          String
+  format       FeedFormat @default(google)
+  syncInterval Int        @default(60) @map("sync_interval") // minutes
+  lastSyncAt   DateTime?  @map("last_sync_at")
+  nextSyncAt   DateTime?  @map("next_sync_at")
+  status       FeedStatus @default(pending)
+  errorMessage String?    @map("error_message")
+  productCount Int        @default(0) @map("product_count")
+  isActive     Boolean    @default(true) @map("is_active")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  // Relations
+  customer Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  products Product[]
+
+  @@index([customerId])
+  @@index([status])
+  @@map("xml_feeds")
+}
+
+/// Parsed product data from XML feeds
+model Product {
+  id          String      @id @default(uuid())
+  customerId  String      @map("customer_id")
+  feedId      String      @map("feed_id")
+  externalId  String      @map("external_id")
+  title       String
+  description String?
+  price       Decimal     @db.Decimal(10, 2)
+  salePrice   Decimal?    @map("sale_price") @db.Decimal(10, 2)
+  currency    String      @default("TRY")
+  imageUrl    String?     @map("image_url")
+  productUrl  String?     @map("product_url")
+  category    String?
+  brand       String?
+  stockStatus StockStatus @default(in_stock) @map("stock_status")
+  attributes  Json        @default("{}")
+  isActive    Boolean     @default(true) @map("is_active")
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+
+  // Relations
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  feed     XmlFeed  @relation(fields: [feedId], references: [id], onDelete: Cascade)
+
+  @@unique([customerId, externalId])
+  @@index([customerId])
+  @@index([feedId])
+  @@index([category])
+  @@index([brand])
+  @@map("products")
+}
+
+/// Cached feed data for quick widget rendering
+model FeedCache {
+  id         String   @id @default(uuid())
+  customerId String   @unique @map("customer_id")
+  payload    Json     @default("[]")
+  checksum   String?
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@map("feed_cache")
+}
+
+/// Audit log for tracking changes
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String?  @map("user_id")
+  action     String
+  entityType String   @map("entity_type")
+  entityId   String   @map("entity_id")
+  oldValues  Json?    @map("old_values")
+  newValues  Json?    @map("new_values")
+  ipAddress  String?  @map("ip_address")
+  userAgent  String?  @map("user_agent")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+/// A/B Test configurations for widget variants
+model ABTest {
+  id           String    @id @default(uuid())
+  customerId   String    @map("customer_id")
+  name         String
+  description  String?
+
+  // Variant configurations (JSON with widgetId, config)
+  variantA     Json      @map("variant_a")
+  variantB     Json      @map("variant_b")
+
+  // Traffic distribution (0.0 - 1.0, proportion for variant A)
+  trafficSplit Float     @default(0.5) @map("traffic_split")
+
+  // Status
+  isActive     Boolean   @default(true) @map("is_active")
+
+  // Test period
+  startDate    DateTime  @default(now()) @map("start_date")
+  endDate      DateTime? @map("end_date")
+
+  // Metrics (updated by analytics)
+  impressionsA Int       @default(0) @map("impressions_a")
+  impressionsB Int       @default(0) @map("impressions_b")
+  clicksA      Int       @default(0) @map("clicks_a")
+  clicksB      Int       @default(0) @map("clicks_b")
+  conversionsA Int       @default(0) @map("conversions_a")
+  conversionsB Int       @default(0) @map("conversions_b")
+
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  customer     Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+  @@index([isActive])
+  @@map("ab_tests")
+}

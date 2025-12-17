@@ -1,0 +1,67 @@
+# ================================
+# ProWidget XML Parser Dockerfile
+# Scheduled feed sync service
+# ================================
+
+# Stage 1: Dependencies
+FROM node:18-alpine AS deps
+
+WORKDIR /app
+
+# Install dependencies for native modules and Prisma
+RUN apk add --no-cache libc6-compat openssl openssl-dev
+
+# Copy package files
+COPY xml-parser/package*.json ./
+
+# Install dependencies (include dev deps for prisma generate)
+RUN npm ci && npm cache clean --force
+
+# Stage 2: Builder
+FROM node:18-alpine AS builder
+
+WORKDIR /app
+
+# Install OpenSSL for Prisma
+RUN apk add --no-cache openssl openssl-dev
+
+# Copy dependencies
+COPY --from=deps /app/node_modules ./node_modules
+
+# Copy source code
+COPY xml-parser/ ./
+
+# Generate Prisma client (shared schema with backend)
+COPY backend/prisma ./prisma
+RUN npx prisma generate
+
+# Stage 3: Production
+FROM node:18-alpine AS runner
+
+WORKDIR /app
+
+# Install OpenSSL for Prisma runtime
+RUN apk add --no-cache openssl
+
+# Create non-root user
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 parser
+
+# Set environment
+ENV NODE_ENV=production
+
+# Copy necessary files
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/src ./src
+COPY --from=builder /app/index.js ./index.js
+COPY --from=builder /app/package.json ./package.json
+
+# Change ownership
+RUN chown -R parser:nodejs /app
+
+USER parser
+
+# Default command - runs as scheduler
+# Can be overridden with --mode=once, --mode=all, etc.
+CMD ["node", "index.js", "--mode=scheduler"]

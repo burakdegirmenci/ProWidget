@@ -1,0 +1,22 @@
+# Default owners for everything in the repo
+*       @prowidget/core-team
+
+# Backend
+/backend/       @prowidget/backend-team
+
+# Admin Panel
+/admin-panel/   @prowidget/frontend-team
+
+# CDN / Widgets
+/cdn/           @prowidget/frontend-team
+
+# XML Parser
+/xml-parser/    @prowidget/backend-team
+
+# Docker / DevOps
+Dockerfile*     @prowidget/devops-team
+docker-compose* @prowidget/devops-team
+/.github/       @prowidget/devops-team
+
+# Documentation
+*.md            @prowidget/core-team

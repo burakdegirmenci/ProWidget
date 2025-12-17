@@ -1,0 +1,57 @@
+# ================================
+# Docker Ignore File
+# ================================
+
+# Git
+.git
+.gitignore
+
+# Dependencies (will be installed in container)
+**/node_modules
+
+# Build outputs
+**/dist
+**/.next
+**/out
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+**/logs
+**/*.log
+
+# Test files
+**/__tests__
+**/*.test.js
+**/*.test.ts
+**/*.spec.js
+**/*.spec.ts
+**/coverage
+
+# Documentation
+**/docs
+**/*.md
+!README.md
+
+# Docker files (not needed inside containers)
+Dockerfile*
+docker-compose*
+.dockerignore
+
+# Misc
+Makefile
+*.zip
+*.tar.gz
