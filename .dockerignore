@@ -43,8 +43,8 @@ Thumbs.db
 
 # Documentation
 **/docs
-**/*.md
-!README.md
+CHANGELOG.md
+CONTRIBUTING.md
 
 # Docker files (not needed inside containers)
 Dockerfile*

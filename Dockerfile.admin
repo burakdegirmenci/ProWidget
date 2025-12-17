@@ -28,8 +28,8 @@ COPY --from=deps /app/node_modules ./node_modules
 # Copy source code
 COPY admin-panel/ ./
 
-# Set build-time environment variables
-ARG NEXT_PUBLIC_API_URL
+# Set build-time environment variables (with default fallback)
+ARG NEXT_PUBLIC_API_URL=http://localhost:3000
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 
 # Build application
