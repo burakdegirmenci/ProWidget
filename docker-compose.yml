@@ -20,8 +20,8 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
-    ports:
-      - "${DB_PORT:-5432}:5432"
+    # ports:
+    #   - "${DB_PORT:-5432}:5432"  # Coolify manages routing
     networks:
       - pwx-network
     healthcheck:
@@ -47,8 +47,8 @@ services:
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3001,http://localhost:5173}
       LOG_LEVEL: ${LOG_LEVEL:-info}
-    ports:
-      - "${BACKEND_PORT:-3000}:3000"
+    # ports:
+    #   - "${BACKEND_PORT:-3000}:3000"  # Coolify manages routing
     networks:
       - pwx-network
     depends_on:
@@ -76,8 +76,8 @@ services:
       NODE_ENV: ${NODE_ENV:-production}
       PORT: 3001
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3000}
-    ports:
-      - "${ADMIN_PORT:-3001}:3001"
+    # ports:
+    #   - "${ADMIN_PORT:-3001}:3001"  # Coolify manages routing
     networks:
       - pwx-network
     depends_on:
@@ -116,8 +116,8 @@ services:
     command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy allkeys-lru
     volumes:
       - redis_data:/data
-    ports:
-      - "${REDIS_PORT:-6379}:6379"
+    # ports:
+    #   - "${REDIS_PORT:-6379}:6379"  # Coolify manages routing
     networks:
       - pwx-network
     healthcheck:
