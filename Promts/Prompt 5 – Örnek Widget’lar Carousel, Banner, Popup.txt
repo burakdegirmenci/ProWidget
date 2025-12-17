@@ -1,0 +1,59 @@
+Şimdi PrimeWidgetsX için 3 temel widget’ı kodlayalım:
+
+1) Carousel
+2) Banner
+3) Popup
+
+Genel kurallar:
+- Hepsi vanilla JS class olarak yazılsın.
+- Her widget constructor’da şu parametreleri alsın:
+  - element (mount edilecek DOM node)
+  - data (backend’den gelen feed’ten ilgili subset)
+  - config (HTML data-attr + backend config birleşimi)
+- CSS’i şu an için minimal tut, ayrı CSS dosyaları olarak göster:
+  - /cdn/widgets/carousel/carousel.js
+  - /cdn/widgets/carousel/carousel.css
+  - /cdn/widgets/banner/banner.js
+  - /cdn/widgets/banner/banner.css
+  - /cdn/widgets/popup/popup.js
+  - /cdn/widgets/popup/popup.css
+
+Detaylar:
+
+1. Carousel Widget
+   - HTML’de kullanım:
+     <div
+       data-pwx-widget="carousel"
+       data-category="bot"
+       data-limit="10"
+     ></div>
+   - data içerisinden:
+     - sadece category == "bot" olan ürünleri filtrele
+     - limit kadar göster
+   - Basit bir yatay kaydırma görünümü ver.
+
+2. Banner Widget
+   - HTML’de kullanım:
+     <div
+       data-pwx-widget="banner"
+       data-campaign="winter20"
+     ></div>
+   - data.campaigns içinden id == "winter20" olan kampanyayı al.
+   - Başlık ve açıklama + bir buton göster (ör: “Alışverişe Başla”).
+
+3. Popup Widget
+   - HTML’de kullanım:
+     <div data-pwx-widget="popup" data-delay="5000"></div>
+   - Sayfa yüklendikten data-delay ms sonra show olsun.
+   - İçerik şimdilik config üzerinden gelsin; ileride panelden yönetilebilir olsun.
+   - Basit bir close (x) butonu olsun.
+
+Ayrıca:
+- /cdn/core/loader.js içinde bu widget’ları registry’ye ekle:
+  const registry = { carousel: CarouselWidget, banner: BannerWidget, popup: PopupWidget }
+
+Cevapta:
+- 3 widget için JS kodlarını
+- Her biri için basit CSS örneklerini
+- loader tarafında nasıl register edileceğini
+tam ve kopyalanabilir şekilde ver.

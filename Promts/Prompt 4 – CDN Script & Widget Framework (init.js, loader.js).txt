@@ -1,0 +1,46 @@
+Şimdi PrimeWidgetsX için CDN tarafındaki JS mimarisini kuralım.
+
+Hedef:
+- Müşteri sitesine sadece şu script ekleniyor:
+  <script defer src="https://cdn.primewidgetsx.com/{slug}/init.js"></script>
+
+- init.js:
+  - window.PWX veya benzeri bir global namespace yaratacak.
+  - Mevcut sayfa URL’sine ve slug’a göre backend’den config/theme/data çekecek.
+  - document üzerinde data-pwx-* attribute’larına sahip elementleri bulacak.
+  - Her bir element için uygun widget’ı instantiate edecek.
+
+İstediğim:
+
+1. /cdn/core/init.js dosyasını tasarla:
+   - Global namespace: window.PrimeWidgetsX veya window.PWX
+   - Config URL: https://api.primewidgetsx.com/api/{slug}/config
+   - Theme URL: aynı mantıkla
+   - Data URL: aynı mantıkla
+   - Sayfa yüklendiğinde:
+     - Fetch config/theme/data (async).
+     - Ardından DOM’u tarayıp data-pwx-widget attribute’una göre widget loader’ı çalıştır.
+
+2. /cdn/core/loader.js:
+   - Widget registry mantığı kur:
+     - const registry = { carousel: CarouselWidget, banner: BannerWidget, popup: PopupWidget }
+   - Her bir element için:
+     - data-pwx-widget -> widget tipi
+     - diğer data-* attributeları config olarak parse et (ör: data-category, data-limit).
+   - İlgili widget class’ını new’le ve elemente mount et.
+
+3. /cdn/core/utils.js:
+   - Küçük utility fonksiyonlar:
+     - DOM ready helper
+     - data-attribute to config parse helper
+     - basit logger
+
+4. Tüm bu kodları vanilla JS ile yaz, bundling ihtiyacın varsa açıklama kısmında öner ama şimdilik single-file delivery düşün (ileride bundler eklenebilir desain).
+
+5. Cevapta:
+   - init.js
+   - loader.js
+   - utils.js
+   için tam JS kodlarını ver.
+
+Admin panel, backend vb. ile entegrasyon URL’lerini backend tasarımına uygun ayarla.

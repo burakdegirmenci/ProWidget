@@ -1,0 +1,58 @@
+Şimdi PrimeWidgetsX için ADMIN PANEL’i kodlayalım.
+
+Amaç:
+- Müşteri hesaplarını yönetmek
+- XML feed URL girmek
+- Widget config’lerini yönetmek
+- Thema/theme config yönetmek
+- Login/logout
+
+Teknolojiler:
+- React + Next.js (veya CRA ama Next tercih et)
+- Tailwind CSS
+- Backend ile JSON REST üzerinden haberleşecek.
+
+Sayfalar:
+1. /login
+   - Email + şifre
+   - Backend: POST /api/admin/auth/login
+   - JWT token’ı localStorage veya HttpOnly cookie ile sakla (güvenlik tavsiyelerini de yaz).
+
+2. /dashboard
+   - Özet: toplam müşteri sayısı, aktif widget sayısı vs.
+
+3. /customers
+   - Liste: customer name, slug, isActive
+   - Customer oluşturma butonu (modal veya ayrı sayfa)
+   - Backend:
+     - GET /api/admin/customers
+     - POST /api/admin/customers
+
+4. /customers/[id]
+   - Customer detay:
+     - Genel info (name, slug, xmlFeedUrl)
+     - XML feed URL’yi düzenleme:
+       - PATCH /api/admin/customers/:id
+     - Widget listesi:
+       - GET /api/admin/customers/:id/widgets
+       - Yeni widget ekleme (POST)
+       - Var olan widget’ı düzenleme (PATCH)
+     - Theme ayarları:
+       - GET /api/admin/customers/:id/theme
+       - POST /api/admin/customers/:id/theme
+
+5. Basit bir “Preview” alanı:
+   - Örn: küçük bir iframe içinde demo sayfa göster ve seçilen widget config’ine göre örnek HTML render et (mock bile olabilir).
+
+İstediğim:
+- admin-panel için Next.js proje yapılandırması (package.json, pages, components).
+- Auth context veya hook’ları.
+- Örnek sayfa kodları (her sayfanın tamamını yazmana gerek yok, ama:
+  - login sayfası
+  - customers list sayfası
+  - customer detail sayfası
+  çalışır halde olsun.)
+- Tailwind config ayarları.
+
+Backend endpoint’lerini daha önce tasarladığımız gibi kullan.
+Kodlar mümkün olduğunca production-ready olsun ama çok aşırı süsleme yapma, sade ve net olsun.

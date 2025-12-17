@@ -1,0 +1,65 @@
+Şimdi PrimeWidgetsX projesinin BACKEND kısmını kodlamak istiyorum.
+
+Tekrar özet:
+- Node.js + Express + PostgreSQL kullan.
+- Müşteriler için:
+  - config
+  - theme
+  - data feed bilgisi (XML URL)
+  - widget ayarları
+- Admin panel bu backend’e istek atacak.
+- CDN tarafındaki init.js ve widget’lar da bazı endpoint’lerden veri alabilir (örn: /api/:customer/config).
+
+İstediğim:
+
+1. Node/Express backend’i için package.json, temel server.js ve config yükleme mantığını yaz.
+   - ENV kullan: DB bağlantısı, JWT secret vs.
+   - TypeScript kullanmaya uygunsan TypeScript tercih et; değilsen temiz JS yaz.
+
+2. PostgreSQL model yapısını tasarla ve Prisma veya Sequelize gibi bir ORM seç:
+   - Customer
+     - id, name, slug, apiKey, xmlFeedUrl, isActive
+   - WidgetConfig
+     - id, customerId, type (carousel/banner/popup), settings (JSONB), isActive
+   - Theme
+     - id, customerId, name, cssVariables (JSONB)
+   - AdminUser
+     - id, email, passwordHash, role
+   - FeedCache (opsiyonel)
+     - id, customerId, payload (JSONB), updatedAt
+
+3. Aşağıdaki REST endpoint’leri implemente et:
+   - PUBLIC:
+     - GET /api/:slug/config
+     - GET /api/:slug/theme
+     - GET /api/:slug/data
+   - ADMIN:
+     - POST /api/admin/auth/login
+     - GET /api/admin/customers
+     - POST /api/admin/customers
+     - PATCH /api/admin/customers/:id
+     - GET /api/admin/customers/:id/widgets
+     - POST /api/admin/customers/:id/widgets
+     - PATCH /api/admin/widgets/:id
+     - GET /api/admin/customers/:id/theme
+     - POST /api/admin/customers/:id/theme
+
+4. Tüm route’lar için ayrı dosya yapısı kullan:
+   - /src/routes
+   - /src/controllers
+   - /src/services
+   - /src/models
+
+5. Admin login için:
+   - JWT tabanlı auth yaz
+   - Password hashing için bcrypt kullan
+   - Middleware: authRequired
+
+6. Bana:
+   - backend klasör yapısını
+   - ana config dosyalarını
+   - örnek model tanımlarını
+   - örnek controller & route kodlarını
+   ayrıntılı şekilde yaz. Kodlar kopyalanıp çalıştırılabilir olsun.
+
+Lütfen cevapta sadece backend kod ve açıklamalarını ver, başka katmanlara (CDN, admin panel) henüz girme.

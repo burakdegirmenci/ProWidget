@@ -1,0 +1,60 @@
+Şimdi PrimeWidgetsX için XML’i okuyup normalize eden servis katmanını kodlayalım.
+
+Amaç:
+- Her müşteri için panelde bir xmlFeedUrl var.
+- Bu URL’yi belirli periyotlarla çekip ürünleri ve kampanyaları normalize etmek istiyoruz.
+- Normalized data:
+  - DB’de FeedCache tablosuna JSONB olarak kaydedilebilir.
+  - Ayrıca static JSON üretip CDN’de tutulabilir gibi structure hazırla (şimdilik DB yeterli).
+
+İstediğim:
+
+1. /xml-parser klasörü altında çalışacak bağımsız bir Node script tasarla:
+   - ORM olarak backend’de hangi ORM’i seçtiysen onu yeniden kullan.
+   - Tüm aktif müşterileri DB’den çek.
+   - Her müşteri için xmlFeedUrl’i al.
+   - Axios veya node-fetch ile XML’i çek.
+   - xml2js veya benzeri bir kütüphane ile parse et.
+   - Aşağıdaki gibi generic bir output formatına normalize et:
+
+   {
+     "products": [
+       {
+         "id": "123",
+         "title": "Siyah Deri Bot",
+         "category": "Bot",
+         "price": 1899.90,
+         "stock": 10,
+         "image": "https://...",
+         "url": "https://..."
+       }
+     ],
+     "campaigns": [
+       {
+         "id": "winter20",
+         "title": "Kışa Özel %20",
+         "start": "2025-12-01",
+         "end": "2025-12-15"
+       }
+     ]
+   }
+
+   - Bu output’u ilgili customer’ın FeedCache kaydına kaydet (upsert).
+
+2. Bu script’in periyodik çalışması için:
+   - Node-cron ile çalışan bir scheduler versiyonu yaz
+   VEYA
+   - “npm run xml-sync” ile manuel çalıştırılabilir bir CLI versiyonu yaz.
+
+3. Hata yönetimi:
+   - XML hatası, network hatası vb. durumlarda logla ama tüm işlemi crash etme.
+   - Başarısız olan customer’ları ayrı bir log satırıyla belirt.
+
+4. /backend tarafındaki GET /api/:slug/data endpoint’i:
+   - FeedCache’teki son veriyi dönecek şekilde güncelle.
+
+Çıktıda:
+- xml-parser için tam kodu
+- gerekli package.json alanlarını
+- backend tarafında data endpoint’inin güncellenmiş halini
+ver.

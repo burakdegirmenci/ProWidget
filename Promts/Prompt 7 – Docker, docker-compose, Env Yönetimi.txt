@@ -1,0 +1,46 @@
+Şimdi PrimeWidgetsX için docker ve docker-compose yapılarını hazırlayalım.
+
+Hedef:
+- Tek komutla çalıştırılabilen bir geliştirme ortamı:
+  - backend (Node/Express)
+  - database (PostgreSQL)
+  - admin-panel (Next.js)
+  - (cdn ve xml-parser şimdilik backend imajının içinde veya ayrı servis olarak planlanabilir, önerini yaz)
+
+İstediğim:
+
+1. /Dockerfile.backend
+   - Node 18+ imajı
+   - /backend altını kur
+   - npm install
+   - npm run migrate (ORM neyse ona göre)
+   - npm start
+
+2. /Dockerfile.admin
+   - Node 18+ imajı
+   - /admin-panel altını kur
+   - npm install
+   - npm run build
+   - npm run start
+
+3. /docker-compose.yml
+   - services:
+     - db (postgres)
+     - backend
+     - admin
+   - network ve volume ayarları
+   - environment variables:
+     - POSTGRES_USER
+     - POSTGRES_PASSWORD
+     - POSTGRES_DB
+     - BACKEND_PORT
+     - ADMIN_PORT
+     - DATABASE_URL
+
+4. Projeyi ayağa kaldırma talimatları:
+   - .env.example dosyası
+   - Geliştirme için hangi komutlar çalıştırılmalı, adım adım yaz.
+
+5. Eğer xml-parser’ı ayrı bir container olarak çalıştırmak mantıklıysa, onun için de ek bir service tanımı örneği ver (örn. cron benzeri bir schedule command ile).
+
+Tüm Dockerfile ve docker-compose içeriklerini tam yaz, kopyalanabilir olsun.

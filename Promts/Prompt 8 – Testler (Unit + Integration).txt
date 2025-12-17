@@ -1,0 +1,30 @@
+Şimdi PrimeWidgetsX için temel test altyapısını ekleyelim.
+
+Amaç:
+- Backend için unit ve integration test’leri (Jest veya vitest).
+- CDN JS için minimal unit test (örneğin utils fonksiyonları).
+- Admin panel için birkaç basit component test’i (React Testing Library).
+
+İstediğim:
+
+1. Backend:
+   - Jest kurulumunu göster (package.json script’leri dahil).
+   - Örnek testler:
+     - Customer service fonksiyonları (customer oluşturma, slug üretme, xmlFeedUrl güncelleme).
+     - /api/:slug/config endpoint’i için integration test (supertest ile).
+
+2. CDN / JS:
+   - utils.js içindeki data-attribute parse fonksiyonu için test.
+   - Jest ile basit DOM simulasyonu (jsdom) kullan.
+
+3. Admin panel:
+   - Login formu için bir test:
+     - Email ve password input’larını doldur
+     - “Login” butonuna tıkla
+     - Backend çağrısını mockla.
+
+4. Tüm testleri çalıştırmak için:
+   - npm test komutları
+   - örnek CI/CD pipeline önerisi (GitHub Actions için minimal yaml)
+
+Lütfen tam test kodlarını ve ilgili config dosyalarını ver, kopyalanıp çalışabilir olsun.

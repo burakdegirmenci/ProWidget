@@ -1,0 +1,62 @@
+Sen, üretim seviyesinde SaaS mimarileri kuran bir senior full-stack mühendissin.
+
+Proje adı: PrimeWidgetsX
+
+Amaç:
+Tek satırlık JS snippet ile çalışan, XML feed ile beslenen, e-ticaret sitelerine widget ekleyen bir SaaS platformu kuracağız.
+
+Ürün özeti:
+- Müşteri sitesine sadece şu script ekleniyor:
+  <script defer src="https://cdn.primewidgetsx.com/{customer}/init.js"></script>
+- Bu script:
+  - {customer} bilgisini kullanarak backend’den config, theme ve data’yı çekiyor.
+  - Sayfadaki data atrribute’ları tarayıp widget’ları mount ediyor.
+- Veri kaynağı:
+  - Müşteri panelde XML feed URL tanımlıyor.
+  - Ayrı bir servis/periyodik job XML’i çekip normalize ediyor.
+  - Bu veri JSON olarak CDN’de veya backend API’de hazır oluyor.
+- PrimeWidgetsX; widget’ları modüler bir sistemle (carousel, banner, popup vs.) yönetiyor.
+
+İstediğim çıktı:
+1. Ürünün high-level mimarisini net anlat (backend, cdn, xml parser, admin panel, db).
+2. Kullanacağımız ana teknolojileri seç (Node/Express, PostgreSQL, React/Next, vs.).
+3. Aşağıdaki gibi mantıklı ve üretim ortamına uygun bir klasör yapısı öner:
+
+/primewidgetsx
+  /backend
+    /src
+      /controllers
+      /services
+      /models
+      /routes
+      /utils
+    server.js
+    config.js
+
+  /cdn
+    /core
+      init.js
+      loader.js
+      utils.js
+    /widgets
+      /carousel
+      /banner
+      /popup
+
+  /admin-panel
+    /src
+      ...
+
+  /xml-parser
+    parser.js
+    normalizer.js
+    scheduler.js
+
+  /docs
+    api-reference.md
+    developer-guide.md
+
+4. Her klasörün içinde hangi dosyalar olacak ve sorumlulukları ne olacak, tek tek açıkla.
+5. Bu tasarımı ilerleyen adımlarda seninle kodlayacağız, o yüzden clean, maintainable, scalable düşün.
+
+Sadece mimariyi ve klasör yapısını üret, şimdilik kod yazma.
