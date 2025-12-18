@@ -42,7 +42,7 @@ services:
       CORS_ORIGIN: ${CORS_ORIGIN:-https://widget.burakdegirmenci.me}
       LOG_LEVEL: ${LOG_LEVEL:-info}
     ports:
-      - "3000:3000"
+      - "3100:3000"
     networks:
       - pwx-network
     depends_on:
@@ -64,7 +64,7 @@ services:
       PORT: 3001
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://widgetbackend.burakdegirmenci.me}
     ports:
-      - "3001:3001"
+      - "3101:3001"
     networks:
       - pwx-network
     depends_on:
