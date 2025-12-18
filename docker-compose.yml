@@ -45,6 +45,7 @@ services:
       - "3100:3000"
     networks:
       - pwx-network
+      - coolify
     depends_on:
       - db
 
@@ -67,6 +68,7 @@ services:
       - "3101:3001"
     networks:
       - pwx-network
+      - coolify
     depends_on:
       - backend
 
@@ -118,6 +120,9 @@ services:
 networks:
   pwx-network:
     driver: bridge
+  coolify:
+    external: true
+    name: coolify
 
 # ================================
 # Volumes
