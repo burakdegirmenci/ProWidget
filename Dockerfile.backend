@@ -40,8 +40,8 @@ FROM node:18-alpine AS runner
 
 WORKDIR /app
 
-# Install OpenSSL for Prisma runtime
-RUN apk add --no-cache openssl
+# Install OpenSSL for Prisma runtime and netcat for health checks
+RUN apk add --no-cache openssl netcat-openbsd
 
 # Create non-root user for security
 RUN addgroup --system --gid 1001 nodejs
