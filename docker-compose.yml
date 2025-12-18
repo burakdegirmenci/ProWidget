@@ -39,7 +39,7 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-pwx_user}:${POSTGRES_PASSWORD:-pwx_password}@db:5432/${POSTGRES_DB:-prowidget}?schema=public
       JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
-      CORS_ORIGINS: ${CORS_ORIGINS:-https://widget.burakdegirmenci.me}
+      CORS_ORIGIN: ${CORS_ORIGIN:-https://widget.burakdegirmenci.me}
       LOG_LEVEL: ${LOG_LEVEL:-info}
     # ports:
     #   - "${BACKEND_PORT:-3000}:3000"  # Coolify manages routing
