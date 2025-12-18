@@ -14,7 +14,9 @@ RUN apk add --no-cache libc6-compat
 # Copy package files
 COPY admin-panel/package*.json ./
 
-# Install dependencies
+# Install ALL dependencies (including devDependencies for build tools like tailwindcss)
+# Force development mode to ensure devDependencies are installed
+ENV NODE_ENV=development
 RUN npm ci && npm cache clean --force
 
 # Stage 2: Builder
