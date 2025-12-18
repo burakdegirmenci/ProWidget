@@ -50,29 +50,6 @@ services:
       - db
 
   # ================================
-  # Admin Panel (Next.js)
-  # ================================
-  admin:
-    build:
-      context: .
-      dockerfile: Dockerfile.admin
-      args:
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://widgetbackend.burakdegirmenci.me}
-    container_name: pwx-admin
-    restart: unless-stopped
-    environment:
-      NODE_ENV: ${NODE_ENV:-production}
-      PORT: 3001
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://widgetbackend.burakdegirmenci.me}
-    ports:
-      - "3101:3001"
-    networks:
-      - pwx-network
-      - coolify
-    depends_on:
-      - backend
-
-  # ================================
   # XML Parser (Scheduler)
   # ================================
   xml-parser:
