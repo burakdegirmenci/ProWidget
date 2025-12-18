@@ -31,7 +31,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY admin-panel/ ./
 
 # Set build-time environment variables (with default fallback)
-ARG NEXT_PUBLIC_API_URL=http://localhost:3000
+ARG NEXT_PUBLIC_API_URL=https://widgetbackend.burakdegirmenci.me
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 
 # Build application

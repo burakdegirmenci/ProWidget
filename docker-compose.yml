@@ -46,7 +46,7 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-pwx_user}:${POSTGRES_PASSWORD:-pwx_password}@db:5432/${POSTGRES_DB:-prowidget}?schema=public
       JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3001,http://localhost:5173}
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://widget.burakdegirmenci.me}
       LOG_LEVEL: ${LOG_LEVEL:-info}
     # ports:
     #   - "${BACKEND_PORT:-3000}:3000"  # Coolify manages routing
@@ -70,13 +70,13 @@ services:
       context: .
       dockerfile: Dockerfile.admin
       args:
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3000}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://widgetbackend.burakdegirmenci.me}
     container_name: pwx-admin
     restart: unless-stopped
     environment:
       NODE_ENV: ${NODE_ENV:-production}
       PORT: 3001
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3000}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://widgetbackend.burakdegirmenci.me}
     # ports:
     #   - "${ADMIN_PORT:-3001}:3001"  # Coolify manages routing
     networks:
