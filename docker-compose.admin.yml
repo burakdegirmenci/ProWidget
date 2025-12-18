@@ -18,6 +18,10 @@ services:
       NODE_ENV: ${NODE_ENV:-production}
       PORT: 3001
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://widgetbackend.burakdegirmenci.me}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=coolify"
+      - "traefik.http.services.hoc8s8gsw44kwg4c8c8ws0gg-admin.loadbalancer.server.port=3001"
     networks:
       - coolify
 
