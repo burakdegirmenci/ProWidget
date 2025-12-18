@@ -36,9 +36,9 @@ if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
     exit 1
 fi
 
-# Additional wait for PostgreSQL to be fully ready
+# Additional wait for PostgreSQL to be fully ready (needs time for init scripts)
 echo "Waiting for PostgreSQL to be fully ready..."
-sleep 5
+sleep 15
 
 # Run Prisma migrations with retry
 echo "Running Prisma migrations..."
