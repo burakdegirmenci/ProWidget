@@ -41,8 +41,8 @@ services:
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
       CORS_ORIGIN: ${CORS_ORIGIN:-https://widget.burakdegirmenci.me}
       LOG_LEVEL: ${LOG_LEVEL:-info}
-    # ports:
-    #   - "${BACKEND_PORT:-3000}:3000"  # Coolify manages routing
+    ports:
+      - "3000:3000"
     networks:
       - pwx-network
     depends_on:
@@ -63,8 +63,8 @@ services:
       NODE_ENV: ${NODE_ENV:-production}
       PORT: 3001
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://widgetbackend.burakdegirmenci.me}
-    # ports:
-    #   - "${ADMIN_PORT:-3001}:3001"  # Coolify manages routing
+    ports:
+      - "3001:3001"
     networks:
       - pwx-network
     depends_on:
