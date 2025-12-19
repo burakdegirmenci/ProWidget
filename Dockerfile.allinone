@@ -201,6 +201,7 @@ stderr_logfile_maxbytes=0
 [program:backend]
 command=/bin/sh -c "sleep 15 && cd /app/backend && npx prisma migrate deploy && node server.js"
 directory=/app/backend
+environment=PORT="3100"
 autostart=true
 autorestart=true
 priority=10
