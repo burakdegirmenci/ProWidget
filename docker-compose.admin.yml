@@ -18,13 +18,13 @@ services:
       NODE_ENV: ${NODE_ENV:-production}
       PORT: 3001
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://widgetbackend.burakdegirmenci.me}
+    ports:
+      - "3001:3001"
     labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.http-0-hoc8s8gsw44kwg4c8c8ws0gg-admin.service=http-0-hoc8s8gsw44kwg4c8c8ws0gg-admin"
-      - "traefik.http.routers.https-0-hoc8s8gsw44kwg4c8c8ws0gg-admin.service=https-0-hoc8s8gsw44kwg4c8c8ws0gg-admin"
-      - "traefik.http.services.http-0-hoc8s8gsw44kwg4c8c8ws0gg-admin.loadbalancer.server.port=3001"
-      - "traefik.http.services.https-0-hoc8s8gsw44kwg4c8c8ws0gg-admin.loadbalancer.server.port=3001"
-      - "traefik.docker.network=coolify"
+      - "coolify.managed=true"
+      - "coolify.type=application"
+      - "coolify.port=3001"
+      - "traefik.http.services.pwx-admin.loadbalancer.server.port=3001"
     networks:
       - coolify
 
