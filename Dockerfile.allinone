@@ -55,7 +55,20 @@ COPY backend/prisma ./prisma
 RUN npx prisma generate
 
 # ================================
-# Stage 4: Production Runtime
+# Stage 4: Build CDN Widget
+# ================================
+FROM base AS cdn-builder
+
+WORKDIR /app/cdn
+
+COPY cdn/package*.json ./
+RUN npm ci
+
+COPY cdn/ ./
+RUN npm run build:prod
+
+# ================================
+# Stage 5: Production Runtime
 # ================================
 FROM node:18-alpine AS runner
 
@@ -77,7 +90,8 @@ RUN mkdir -p \
     /var/log/supervisor \
     /app/backend \
     /app/admin \
-    /app/xml-parser
+    /app/xml-parser \
+    /app/cdn/dist
 
 # Set PostgreSQL permissions
 RUN chown -R postgres:postgres /var/lib/postgresql /run/postgresql
@@ -98,6 +112,9 @@ COPY --from=xmlparser-builder /app/xml-parser/prisma /app/xml-parser/prisma
 COPY --from=xmlparser-builder /app/xml-parser/src /app/xml-parser/src
 COPY --from=xmlparser-builder /app/xml-parser/index.js /app/xml-parser/index.js
 COPY --from=xmlparser-builder /app/xml-parser/package.json /app/xml-parser/package.json
+
+# Copy CDN widget files
+COPY --from=cdn-builder /app/cdn/dist /app/cdn/dist
 
 # Environment variables
 ENV POSTGRES_USER=pwx_user
@@ -142,6 +159,14 @@ http {
     server {
         listen 3000;
         server_name _;
+
+        # CDN static files
+        location /cdn {
+            alias /app/cdn/dist;
+            expires 1y;
+            add_header Cache-Control "public, immutable";
+            add_header Access-Control-Allow-Origin *;
+        }
 
         location /api {
             proxy_pass http://backend;

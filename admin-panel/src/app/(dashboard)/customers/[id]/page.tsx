@@ -465,8 +465,9 @@ export default function CustomerDetailPage() {
                   </label>
                   <pre className="overflow-x-auto rounded-lg bg-gray-900 p-4 text-xs text-gray-100">
 {`<script
-  src="https://cdn.prowidget.com/pwx.min.js"
+  src="https://widget.burakdegirmenci.me/cdn/pwx.min.js"
   data-pwx-customer="${customer.slug}"
+  data-pwx-api-url="https://widget.burakdegirmenci.me"
 ></script>
 
 <div data-pwx-widget="carousel"></div>`}
