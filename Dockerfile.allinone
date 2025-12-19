@@ -1,0 +1,141 @@
+# ================================
+# ProWidget All-in-One Dockerfile
+# PostgreSQL + Backend + XML Parser
+# Single container deployment for Coolify
+# ================================
+
+FROM node:18-alpine
+
+# Install PostgreSQL, supervisor, and dependencies
+RUN apk add --no-cache \
+    postgresql15 \
+    postgresql15-contrib \
+    supervisor \
+    openssl \
+    netcat-openbsd \
+    wget \
+    bash
+
+# Create directories
+RUN mkdir -p /var/lib/postgresql/data \
+    /run/postgresql \
+    /var/log/supervisor \
+    /app/backend \
+    /app/xml-parser
+
+# Set PostgreSQL permissions
+RUN chown -R postgres:postgres /var/lib/postgresql /run/postgresql
+
+# Set working directory
+WORKDIR /app
+
+# Copy backend
+COPY backend/package*.json ./backend/
+RUN cd backend && npm ci && npm cache clean --force
+
+COPY backend/ ./backend/
+RUN cd backend && npx prisma generate
+
+# Copy XML parser
+COPY xml-parser/package*.json ./xml-parser/
+RUN cd xml-parser && npm ci && npm cache clean --force
+
+COPY xml-parser/ ./xml-parser/
+RUN cd xml-parser && npx prisma generate
+
+# Environment variables (defaults for Coolify)
+ENV POSTGRES_USER=pwx_user
+ENV POSTGRES_PASSWORD=pwx_password
+ENV POSTGRES_DB=prowidget
+ENV DATABASE_URL=postgresql://pwx_user:pwx_password@localhost:5432/prowidget?schema=public
+ENV NODE_ENV=production
+ENV PORT=3000
+ENV JWT_SECRET=prowidget-jwt-secret-change-in-production-2024
+ENV JWT_EXPIRES_IN=7d
+ENV CORS_ORIGIN=https://widget.burakdegirmenci.me
+ENV LOG_LEVEL=info
+ENV SYNC_CRON_SCHEDULE=*/15 * * * *
+
+# Create supervisor config
+RUN cat > /etc/supervisord.conf << 'EOF'
+[supervisord]
+nodaemon=true
+user=root
+logfile=/var/log/supervisor/supervisord.log
+pidfile=/var/run/supervisord.pid
+
+[program:postgresql]
+command=/usr/bin/postgres -D /var/lib/postgresql/data
+user=postgres
+autostart=true
+autorestart=true
+priority=1
+stdout_logfile=/var/log/supervisor/postgresql.log
+stderr_logfile=/var/log/supervisor/postgresql_err.log
+
+[program:backend]
+command=/bin/sh -c "sleep 10 && cd /app/backend && npx prisma migrate deploy && node server.js"
+directory=/app/backend
+autostart=true
+autorestart=true
+priority=10
+stdout_logfile=/var/log/supervisor/backend.log
+stderr_logfile=/var/log/supervisor/backend_err.log
+environment=DATABASE_URL="%(ENV_DATABASE_URL)s",NODE_ENV="%(ENV_NODE_ENV)s",PORT="%(ENV_PORT)s",JWT_SECRET="%(ENV_JWT_SECRET)s",CORS_ORIGIN="%(ENV_CORS_ORIGIN)s"
+
+[program:xmlparser]
+command=/bin/sh -c "sleep 20 && cd /app/xml-parser && node src/index.js"
+directory=/app/xml-parser
+autostart=true
+autorestart=true
+priority=20
+stdout_logfile=/var/log/supervisor/xmlparser.log
+stderr_logfile=/var/log/supervisor/xmlparser_err.log
+environment=DATABASE_URL="%(ENV_DATABASE_URL)s",NODE_ENV="%(ENV_NODE_ENV)s",SYNC_CRON_SCHEDULE="%(ENV_SYNC_CRON_SCHEDULE)s"
+EOF
+
+# Create startup script
+RUN cat > /app/start.sh << 'EOF'
+#!/bin/bash
+set -e
+
+# Initialize PostgreSQL if not exists
+if [ ! -f /var/lib/postgresql/data/PG_VERSION ]; then
+    echo "Initializing PostgreSQL database..."
+    su postgres -c "initdb -D /var/lib/postgresql/data"
+
+    # Configure PostgreSQL
+    echo "host all all 0.0.0.0/0 md5" >> /var/lib/postgresql/data/pg_hba.conf
+    echo "listen_addresses='*'" >> /var/lib/postgresql/data/postgresql.conf
+
+    # Start PostgreSQL temporarily to create user/db
+    su postgres -c "pg_ctl -D /var/lib/postgresql/data start"
+    sleep 3
+
+    # Create user and database
+    su postgres -c "psql -c \"CREATE USER ${POSTGRES_USER} WITH PASSWORD '${POSTGRES_PASSWORD}' SUPERUSER;\""
+    su postgres -c "psql -c \"CREATE DATABASE ${POSTGRES_DB} OWNER ${POSTGRES_USER};\""
+    su postgres -c "psql -d ${POSTGRES_DB} -c \"CREATE EXTENSION IF NOT EXISTS uuid-ossp; CREATE EXTENSION IF NOT EXISTS pg_trgm;\""
+
+    # Stop PostgreSQL (supervisor will start it)
+    su postgres -c "pg_ctl -D /var/lib/postgresql/data stop"
+    sleep 2
+
+    echo "PostgreSQL initialized successfully!"
+fi
+
+# Start supervisor
+exec /usr/bin/supervisord -c /etc/supervisord.conf
+EOF
+
+RUN chmod +x /app/start.sh
+
+# Expose port
+EXPOSE 3000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=90s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://127.0.0.1:3000/api/health || exit 1
+
+# Start
+CMD ["/app/start.sh"]
