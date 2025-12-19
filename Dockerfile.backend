@@ -4,7 +4,7 @@
 # ================================
 
 # Stage 1: Dependencies
-FROM node:18-alpine AS deps
+FROM node:25-alpine AS deps
 
 WORKDIR /app
 
@@ -19,7 +19,7 @@ ENV NODE_ENV=development
 RUN npm ci && npm cache clean --force
 
 # Stage 2: Builder
-FROM node:18-alpine AS builder
+FROM node:25-alpine AS builder
 
 WORKDIR /app
 
@@ -36,7 +36,7 @@ COPY backend/ ./
 RUN npx prisma generate
 
 # Stage 3: Production
-FROM node:18-alpine AS runner
+FROM node:25-alpine AS runner
 
 WORKDIR /app
 
