@@ -108,7 +108,7 @@ ENV JWT_SECRET=prowidget-jwt-secret-change-in-production-2024
 ENV JWT_EXPIRES_IN=7d
 ENV CORS_ORIGIN=*
 ENV LOG_LEVEL=info
-ENV SYNC_CRON_SCHEDULE=*/15 * * * *
+ENV SYNC_CRON_SCHEDULE="*/15 * * * *"
 
 # Nginx configuration
 RUN cat > /etc/nginx/http.d/default.conf << 'EOF'
