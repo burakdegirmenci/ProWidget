@@ -21,7 +21,7 @@ RUN npm ci
 COPY admin-panel/ ./
 
 # API will be on same domain with /api prefix
-ENV NEXT_PUBLIC_API_URL=
+ENV NEXT_PUBLIC_API_URL=https://widget.burakdegirmenci.me
 ENV NODE_ENV=production
 
 RUN npm run build
