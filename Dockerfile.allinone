@@ -105,7 +105,7 @@ ENV POSTGRES_PASSWORD=pwx_password
 ENV POSTGRES_DB=prowidget
 ENV DATABASE_URL=postgresql://pwx_user:pwx_password@127.0.0.1:5432/prowidget?schema=public
 ENV NODE_ENV=production
-ENV PORT=3000
+ENV PORT=3100
 ENV ADMIN_PORT=3001
 ENV JWT_SECRET=prowidget-jwt-secret-change-in-production-2024
 ENV JWT_EXPIRES_IN=7d
@@ -136,11 +136,11 @@ http {
     }
 
     upstream backend {
-        server 127.0.0.1:3000;
+        server 127.0.0.1:3100;
     }
 
     server {
-        listen 80;
+        listen 3000;
         server_name _;
 
         location /api {
@@ -269,11 +269,11 @@ STARTEOF
 
 RUN chmod +x /app/start.sh
 
-# Expose nginx port
-EXPOSE 80
+# Expose nginx port (Coolify routes to 3000)
+EXPOSE 3000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://127.0.0.1:80/ || exit 1
+    CMD wget --no-verbose --tries=1 --spider http://127.0.0.1:3000/ || exit 1
 
 CMD ["/app/start.sh"]
