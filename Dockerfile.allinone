@@ -1,68 +1,159 @@
 # ================================
 # ProWidget All-in-One Dockerfile
-# PostgreSQL + Backend + XML Parser
-# Single container deployment for Coolify
+# PostgreSQL + Backend + Admin + XML Parser
+# Single container, single domain deployment
 # ================================
 
-FROM node:18-alpine
+FROM node:18-alpine AS base
 
-# Install PostgreSQL, supervisor, and dependencies
+# ================================
+# Stage 1: Build Admin Panel
+# ================================
+FROM base AS admin-builder
+
+WORKDIR /app/admin
+
+# Install dependencies
+COPY admin-panel/package*.json ./
+RUN npm ci
+
+# Copy source and build
+COPY admin-panel/ ./
+
+# API will be on same domain with /api prefix
+ENV NEXT_PUBLIC_API_URL=
+ENV NODE_ENV=production
+
+RUN npm run build
+
+# ================================
+# Stage 2: Build Backend
+# ================================
+FROM base AS backend-builder
+
+WORKDIR /app/backend
+
+COPY backend/package*.json ./
+RUN npm ci
+
+COPY backend/ ./
+RUN npx prisma generate
+
+# ================================
+# Stage 3: Build XML Parser
+# ================================
+FROM base AS xmlparser-builder
+
+WORKDIR /app/xml-parser
+
+COPY xml-parser/package*.json ./
+RUN npm ci
+
+COPY xml-parser/ ./
+RUN npx prisma generate
+
+# ================================
+# Stage 4: Production Runtime
+# ================================
+FROM node:18-alpine AS runner
+
+# Install runtime dependencies
 RUN apk add --no-cache \
     postgresql15 \
     postgresql15-contrib \
+    nginx \
     supervisor \
     openssl \
-    netcat-openbsd \
     wget \
     bash
 
 # Create directories
-RUN mkdir -p /var/lib/postgresql/data \
+RUN mkdir -p \
+    /var/lib/postgresql/data \
     /run/postgresql \
+    /run/nginx \
     /var/log/supervisor \
     /app/backend \
+    /app/admin \
     /app/xml-parser
 
 # Set PostgreSQL permissions
 RUN chown -R postgres:postgres /var/lib/postgresql /run/postgresql
 
-# Set working directory
-WORKDIR /app
+# Copy built applications
+COPY --from=backend-builder /app/backend/node_modules /app/backend/node_modules
+COPY --from=backend-builder /app/backend/prisma /app/backend/prisma
+COPY --from=backend-builder /app/backend/src /app/backend/src
+COPY --from=backend-builder /app/backend/server.js /app/backend/server.js
+COPY --from=backend-builder /app/backend/package.json /app/backend/package.json
 
-# Copy backend
-COPY backend/package*.json ./backend/
-RUN cd backend && npm ci && npm cache clean --force
+COPY --from=admin-builder /app/admin/.next/standalone /app/admin
+COPY --from=admin-builder /app/admin/.next/static /app/admin/.next/static
+COPY --from=admin-builder /app/admin/public /app/admin/public
 
-COPY backend/ ./backend/
-RUN cd backend && npx prisma generate
+COPY --from=xmlparser-builder /app/xml-parser/node_modules /app/xml-parser/node_modules
+COPY --from=xmlparser-builder /app/xml-parser/prisma /app/xml-parser/prisma
+COPY --from=xmlparser-builder /app/xml-parser/src /app/xml-parser/src
+COPY --from=xmlparser-builder /app/xml-parser/package.json /app/xml-parser/package.json
 
-# Copy XML parser
-COPY xml-parser/package*.json ./xml-parser/
-RUN cd xml-parser && npm ci && npm cache clean --force
-
-COPY xml-parser/ ./xml-parser/
-RUN cd xml-parser && npx prisma generate
-
-# Environment variables (defaults for Coolify)
+# Environment variables
 ENV POSTGRES_USER=pwx_user
 ENV POSTGRES_PASSWORD=pwx_password
 ENV POSTGRES_DB=prowidget
-ENV DATABASE_URL=postgresql://pwx_user:pwx_password@localhost:5432/prowidget?schema=public
+ENV DATABASE_URL=postgresql://pwx_user:pwx_password@127.0.0.1:5432/prowidget?schema=public
 ENV NODE_ENV=production
 ENV PORT=3000
+ENV ADMIN_PORT=3001
 ENV JWT_SECRET=prowidget-jwt-secret-change-in-production-2024
 ENV JWT_EXPIRES_IN=7d
-ENV CORS_ORIGIN=https://widget.burakdegirmenci.me
+ENV CORS_ORIGIN=*
 ENV LOG_LEVEL=info
 ENV SYNC_CRON_SCHEDULE=*/15 * * * *
 
-# Create supervisor config
+# Nginx configuration
+RUN cat > /etc/nginx/http.d/default.conf << 'EOF'
+server {
+    listen 80;
+    server_name _;
+
+    # Backend API
+    location /api/ {
+        proxy_pass http://127.0.0.1:3000/api/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+        proxy_read_timeout 300s;
+        proxy_connect_timeout 75s;
+    }
+
+    # Admin Panel (Next.js)
+    location / {
+        proxy_pass http://127.0.0.1:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+    }
+}
+EOF
+
+# Supervisor configuration
 RUN cat > /etc/supervisord.conf << 'EOF'
 [supervisord]
 nodaemon=true
 user=root
 logfile=/var/log/supervisor/supervisord.log
 pidfile=/var/run/supervisord.pid
+loglevel=info
 
 [program:postgresql]
 command=/usr/bin/postgres -D /var/lib/postgresql/data
@@ -70,72 +161,97 @@ user=postgres
 autostart=true
 autorestart=true
 priority=1
-stdout_logfile=/var/log/supervisor/postgresql.log
-stderr_logfile=/var/log/supervisor/postgresql_err.log
+stdout_logfile=/dev/stdout
+stdout_logfile_maxbytes=0
+stderr_logfile=/dev/stderr
+stderr_logfile_maxbytes=0
+
+[program:nginx]
+command=/usr/sbin/nginx -g "daemon off;"
+autostart=true
+autorestart=true
+priority=5
+stdout_logfile=/dev/stdout
+stdout_logfile_maxbytes=0
+stderr_logfile=/dev/stderr
+stderr_logfile_maxbytes=0
 
 [program:backend]
-command=/bin/sh -c "sleep 10 && cd /app/backend && npx prisma migrate deploy && node server.js"
+command=/bin/sh -c "sleep 15 && cd /app/backend && npx prisma migrate deploy && node server.js"
 directory=/app/backend
 autostart=true
 autorestart=true
 priority=10
-stdout_logfile=/var/log/supervisor/backend.log
-stderr_logfile=/var/log/supervisor/backend_err.log
-environment=DATABASE_URL="%(ENV_DATABASE_URL)s",NODE_ENV="%(ENV_NODE_ENV)s",PORT="%(ENV_PORT)s",JWT_SECRET="%(ENV_JWT_SECRET)s",CORS_ORIGIN="%(ENV_CORS_ORIGIN)s"
+stdout_logfile=/dev/stdout
+stdout_logfile_maxbytes=0
+stderr_logfile=/dev/stderr
+stderr_logfile_maxbytes=0
+
+[program:admin]
+command=/bin/sh -c "sleep 10 && cd /app/admin && node server.js"
+directory=/app/admin
+environment=PORT="3001",HOSTNAME="0.0.0.0"
+autostart=true
+autorestart=true
+priority=10
+stdout_logfile=/dev/stdout
+stdout_logfile_maxbytes=0
+stderr_logfile=/dev/stderr
+stderr_logfile_maxbytes=0
 
 [program:xmlparser]
-command=/bin/sh -c "sleep 20 && cd /app/xml-parser && node src/index.js"
+command=/bin/sh -c "sleep 25 && cd /app/xml-parser && node src/index.js"
 directory=/app/xml-parser
 autostart=true
 autorestart=true
 priority=20
-stdout_logfile=/var/log/supervisor/xmlparser.log
-stderr_logfile=/var/log/supervisor/xmlparser_err.log
-environment=DATABASE_URL="%(ENV_DATABASE_URL)s",NODE_ENV="%(ENV_NODE_ENV)s",SYNC_CRON_SCHEDULE="%(ENV_SYNC_CRON_SCHEDULE)s"
+stdout_logfile=/dev/stdout
+stdout_logfile_maxbytes=0
+stderr_logfile=/dev/stderr
+stderr_logfile_maxbytes=0
 EOF
 
-# Create startup script
-RUN cat > /app/start.sh << 'EOF'
+# Startup script
+RUN cat > /app/start.sh << 'STARTEOF'
 #!/bin/bash
 set -e
 
-# Initialize PostgreSQL if not exists
-if [ ! -f /var/lib/postgresql/data/PG_VERSION ]; then
-    echo "Initializing PostgreSQL database..."
-    su postgres -c "initdb -D /var/lib/postgresql/data"
+echo "=== ProWidget All-in-One Starting ==="
 
-    # Configure PostgreSQL
+# Initialize PostgreSQL if needed
+if [ ! -f /var/lib/postgresql/data/PG_VERSION ]; then
+    echo "Initializing PostgreSQL..."
+    su postgres -c "initdb -D /var/lib/postgresql/data --encoding=UTF8 --locale=C"
+
     echo "host all all 0.0.0.0/0 md5" >> /var/lib/postgresql/data/pg_hba.conf
+    echo "host all all 127.0.0.1/32 trust" >> /var/lib/postgresql/data/pg_hba.conf
+    echo "local all all trust" >> /var/lib/postgresql/data/pg_hba.conf
     echo "listen_addresses='*'" >> /var/lib/postgresql/data/postgresql.conf
 
-    # Start PostgreSQL temporarily to create user/db
-    su postgres -c "pg_ctl -D /var/lib/postgresql/data start"
+    su postgres -c "pg_ctl -D /var/lib/postgresql/data start -w"
     sleep 3
 
-    # Create user and database
     su postgres -c "psql -c \"CREATE USER ${POSTGRES_USER} WITH PASSWORD '${POSTGRES_PASSWORD}' SUPERUSER;\""
     su postgres -c "psql -c \"CREATE DATABASE ${POSTGRES_DB} OWNER ${POSTGRES_USER};\""
-    su postgres -c "psql -d ${POSTGRES_DB} -c \"CREATE EXTENSION IF NOT EXISTS uuid-ossp; CREATE EXTENSION IF NOT EXISTS pg_trgm;\""
+    su postgres -c "psql -d ${POSTGRES_DB} -c \"CREATE EXTENSION IF NOT EXISTS \\\"uuid-ossp\\\"; CREATE EXTENSION IF NOT EXISTS pg_trgm;\""
 
-    # Stop PostgreSQL (supervisor will start it)
-    su postgres -c "pg_ctl -D /var/lib/postgresql/data stop"
+    su postgres -c "pg_ctl -D /var/lib/postgresql/data stop -w"
     sleep 2
 
-    echo "PostgreSQL initialized successfully!"
+    echo "PostgreSQL initialized!"
 fi
 
-# Start supervisor
+echo "Starting all services..."
 exec /usr/bin/supervisord -c /etc/supervisord.conf
-EOF
+STARTEOF
 
 RUN chmod +x /app/start.sh
 
-# Expose port
-EXPOSE 3000
+# Expose nginx port
+EXPOSE 80
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=90s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://127.0.0.1:3000/api/health || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://127.0.0.1:80/ || exit 1
 
-# Start
 CMD ["/app/start.sh"]
