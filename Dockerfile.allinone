@@ -113,33 +113,60 @@ ENV CORS_ORIGIN=*
 ENV LOG_LEVEL=info
 ENV SYNC_CRON_SCHEDULE="*/15 * * * *"
 
-# Nginx configuration - remove default and create custom
-RUN rm -f /etc/nginx/http.d/default.conf && \
-    echo 'server {' > /etc/nginx/http.d/prowidget.conf && \
-    echo '    listen 80 default_server;' >> /etc/nginx/http.d/prowidget.conf && \
-    echo '    server_name _;' >> /etc/nginx/http.d/prowidget.conf && \
-    echo '' >> /etc/nginx/http.d/prowidget.conf && \
-    echo '    location /api/ {' >> /etc/nginx/http.d/prowidget.conf && \
-    echo '        proxy_pass http://127.0.0.1:3000;' >> /etc/nginx/http.d/prowidget.conf && \
-    echo '        proxy_http_version 1.1;' >> /etc/nginx/http.d/prowidget.conf && \
-    echo '        proxy_set_header Host $host;' >> /etc/nginx/http.d/prowidget.conf && \
-    echo '        proxy_set_header X-Real-IP $remote_addr;' >> /etc/nginx/http.d/prowidget.conf && \
-    echo '        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;' >> /etc/nginx/http.d/prowidget.conf && \
-    echo '        proxy_set_header X-Forwarded-Proto $scheme;' >> /etc/nginx/http.d/prowidget.conf && \
-    echo '        proxy_read_timeout 300s;' >> /etc/nginx/http.d/prowidget.conf && \
-    echo '    }' >> /etc/nginx/http.d/prowidget.conf && \
-    echo '' >> /etc/nginx/http.d/prowidget.conf && \
-    echo '    location / {' >> /etc/nginx/http.d/prowidget.conf && \
-    echo '        proxy_pass http://127.0.0.1:3001;' >> /etc/nginx/http.d/prowidget.conf && \
-    echo '        proxy_http_version 1.1;' >> /etc/nginx/http.d/prowidget.conf && \
-    echo '        proxy_set_header Host $host;' >> /etc/nginx/http.d/prowidget.conf && \
-    echo '        proxy_set_header X-Real-IP $remote_addr;' >> /etc/nginx/http.d/prowidget.conf && \
-    echo '        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;' >> /etc/nginx/http.d/prowidget.conf && \
-    echo '        proxy_set_header X-Forwarded-Proto $scheme;' >> /etc/nginx/http.d/prowidget.conf && \
-    echo '        proxy_set_header Upgrade $http_upgrade;' >> /etc/nginx/http.d/prowidget.conf && \
-    echo '        proxy_set_header Connection "upgrade";' >> /etc/nginx/http.d/prowidget.conf && \
-    echo '    }' >> /etc/nginx/http.d/prowidget.conf && \
-    echo '}' >> /etc/nginx/http.d/prowidget.conf
+# Nginx configuration - COMPLETE OVERRIDE
+RUN rm -rf /etc/nginx/http.d/* && \
+    cat > /etc/nginx/nginx.conf << 'NGINXEOF'
+worker_processes auto;
+error_log /dev/stderr warn;
+pid /run/nginx/nginx.pid;
+
+events {
+    worker_connections 1024;
+}
+
+http {
+    include /etc/nginx/mime.types;
+    default_type application/octet-stream;
+    access_log /dev/stdout;
+    sendfile on;
+    keepalive_timeout 65;
+
+    upstream admin {
+        server 127.0.0.1:3001;
+    }
+
+    upstream backend {
+        server 127.0.0.1:3000;
+    }
+
+    server {
+        listen 80;
+        server_name _;
+
+        location /api {
+            proxy_pass http://backend;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_read_timeout 300s;
+            proxy_connect_timeout 75s;
+        }
+
+        location / {
+            proxy_pass http://admin;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+        }
+    }
+}
+NGINXEOF
 
 # Supervisor configuration
 RUN cat > /etc/supervisord.conf << 'EOF'
