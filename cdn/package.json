@@ -2,6 +2,7 @@
   "name": "@prowidget/cdn",
   "version": "1.0.0",
   "description": "ProWidget CDN Widget Framework",
+  "type": "module",
   "main": "dist/pwx.min.js",
   "module": "src/core/init.js",
   "scripts": {
