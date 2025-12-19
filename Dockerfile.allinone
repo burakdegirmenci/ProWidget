@@ -50,6 +50,8 @@ COPY xml-parser/package*.json ./
 RUN npm ci
 
 COPY xml-parser/ ./
+# XML Parser uses backend's prisma schema
+COPY backend/prisma ./prisma
 RUN npx prisma generate
 
 # ================================
