@@ -96,6 +96,7 @@ COPY --from=admin-builder /app/admin/public /app/admin/public
 COPY --from=xmlparser-builder /app/xml-parser/node_modules /app/xml-parser/node_modules
 COPY --from=xmlparser-builder /app/xml-parser/prisma /app/xml-parser/prisma
 COPY --from=xmlparser-builder /app/xml-parser/src /app/xml-parser/src
+COPY --from=xmlparser-builder /app/xml-parser/index.js /app/xml-parser/index.js
 COPY --from=xmlparser-builder /app/xml-parser/package.json /app/xml-parser/package.json
 
 # Environment variables
@@ -202,7 +203,7 @@ stderr_logfile=/dev/stderr
 stderr_logfile_maxbytes=0
 
 [program:xmlparser]
-command=/bin/sh -c "sleep 25 && cd /app/xml-parser && node src/index.js"
+command=/bin/sh -c "sleep 25 && cd /app/xml-parser && node index.js"
 directory=/app/xml-parser
 autostart=true
 autorestart=true
