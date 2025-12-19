@@ -747,45 +747,237 @@ class PWX extends EventEmitter {
 const pwx = new PWX();
 
 /**
+ * Check if selector mode is active
+ * @returns {boolean}
+ */
+function isSelectorMode() {
+  const urlParams = new URLSearchParams(window.location.search);
+  return urlParams.get('pwx_select') === '1';
+}
+
+/**
+ * Load selector agent dynamically
+ * Injects the selector-agent.js script
+ */
+function loadSelectorAgent() {
+  // Find the current script's base URL
+  const currentScript = document.currentScript ||
+    document.querySelector('script[src*="pwx"]') ||
+    document.querySelector('script[data-pwx-customer]');
+
+  let baseUrl = '';
+  if (currentScript && currentScript.src) {
+    // Extract base URL from current script
+    const url = new URL(currentScript.src);
+    baseUrl = url.origin + url.pathname.replace(/\/[^/]+$/, '');
+  } else if (currentScript && currentScript.dataset.pwxApiUrl) {
+    // Use API URL as base
+    baseUrl = currentScript.dataset.pwxApiUrl + '/cdn';
+  }
+
+  // Create and inject selector-agent script
+  const script = document.createElement('script');
+  script.src = baseUrl + '/selector-agent.min.js';
+  script.async = true;
+  script.onload = () => {
+    logger.info('[PWX] Selector agent loaded');
+  };
+  script.onerror = () => {
+    logger.error('[PWX] Failed to load selector agent');
+    // Fallback: inline selector
+    inlineSelector();
+  };
+
+  document.head.appendChild(script);
+}
+
+/**
+ * Inline fallback selector (minimal version)
+ * Used when selector-agent.js can't be loaded
+ */
+function inlineSelector() {
+  const HIGHLIGHT_COLOR = '#3b82f6';
+  const SELECTED_COLOR = '#22c55e';
+
+  let highlightOverlay = null;
+  let selectedElement = null;
+
+  // Create styles
+  const styles = document.createElement('style');
+  styles.textContent = `
+    .pwx-selector-ui {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 2147483647;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    .pwx-selector-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 12px 20px;
+      background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+      color: white;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    .pwx-selector-logo {
+      font-weight: 700;
+      font-size: 14px;
+      padding: 6px 12px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 6px;
+    }
+    .pwx-selector-info { flex: 1; font-size: 14px; opacity: 0.9; }
+    .pwx-selector-cancel {
+      padding: 8px 16px;
+      background: rgba(255,255,255,0.2);
+      border: 1px solid rgba(255,255,255,0.3);
+      border-radius: 6px;
+      color: white;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .pwx-selector-highlight {
+      position: fixed;
+      pointer-events: none;
+      border: 2px solid ${HIGHLIGHT_COLOR};
+      background: rgba(59, 130, 246, 0.1);
+      z-index: 2147483646;
+    }
+    .pwx-selector-highlight.selected {
+      border-color: ${SELECTED_COLOR};
+      background: rgba(34, 197, 94, 0.1);
+    }
+  `;
+  document.head.appendChild(styles);
+
+  // Create UI
+  const ui = document.createElement('div');
+  ui.className = 'pwx-selector-ui';
+  ui.innerHTML = '<div class="pwx-selector-toolbar">' +
+    '<div class="pwx-selector-logo">PWX Selector</div>' +
+    '<div class="pwx-selector-info">Widget yerleştirmek istediğiniz elementi tıklayın</div>' +
+    '<button class="pwx-selector-cancel">İptal</button>' +
+    '</div>';
+  document.body.appendChild(ui);
+
+  // Create highlight overlay
+  highlightOverlay = document.createElement('div');
+  highlightOverlay.className = 'pwx-selector-highlight';
+  document.body.appendChild(highlightOverlay);
+
+  // Event handlers
+  function highlight(el) {
+    if (!el || el.closest('.pwx-selector-ui')) {
+      highlightOverlay.style.display = 'none';
+      return;
+    }
+    const rect = el.getBoundingClientRect();
+    highlightOverlay.style.display = 'block';
+    highlightOverlay.style.top = rect.top + window.scrollY + 'px';
+    highlightOverlay.style.left = rect.left + window.scrollX + 'px';
+    highlightOverlay.style.width = rect.width + 'px';
+    highlightOverlay.style.height = rect.height + 'px';
+  }
+
+  function generateSelector(el) {
+    if (el.id) return '#' + el.id;
+    let path = [];
+    while (el && el !== document.body) {
+      let seg = el.tagName.toLowerCase();
+      if (el.className && typeof el.className === 'string') {
+        const cls = el.className.split(' ').filter(c => c && !c.startsWith('pwx-'))[0];
+        if (cls) seg += '.' + cls;
+      }
+      path.unshift(seg);
+      el = el.parentElement;
+    }
+    return path.slice(-3).join(' > ');
+  }
+
+  document.addEventListener('mouseover', e => highlight(e.target));
+  document.addEventListener('click', e => {
+    if (e.target.closest('.pwx-selector-ui')) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    selectedElement = e.target;
+    const selector = generateSelector(selectedElement);
+    highlightOverlay.classList.add('selected');
+
+    // Send to opener
+    const data = { type: 'PWX_SELECTOR_RESULT', status: 'selected', selector };
+    localStorage.setItem('pwx_selector_session', JSON.stringify({ ...data, timestamp: Date.now() }));
+    if (window.opener) window.opener.postMessage(data, '*');
+
+    // Show success
+    alert('Seçim tamamlandı: ' + selector + '\n\nAdmin panele dönebilirsiniz.');
+    cleanup();
+  }, true);
+
+  ui.querySelector('.pwx-selector-cancel').addEventListener('click', () => {
+    const data = { type: 'PWX_SELECTOR_RESULT', status: 'cancelled' };
+    localStorage.setItem('pwx_selector_session', JSON.stringify({ ...data, timestamp: Date.now() }));
+    if (window.opener) window.opener.postMessage(data, '*');
+    cleanup();
+  });
+
+  function cleanup() {
+    ui.remove();
+    highlightOverlay.remove();
+    styles.remove();
+  }
+}
+
+/**
  * Auto-initialize on DOM ready if in browser
  */
 if (isBrowser) {
   // Expose to global namespace
   window.PWX = pwx;
 
-  // Check for existing queue
-  if (window.PWX_QUEUE && Array.isArray(window.PWX_QUEUE)) {
-    // Process queued method calls
-    window.PWX_QUEUE.forEach(([method, ...args]) => {
-      if (typeof pwx[method] === 'function') {
-        pwx[method](...args);
+  // Check if selector mode is active FIRST (before any init)
+  if (isSelectorMode()) {
+    logger.info('[PWX] Selector mode detected');
+    domReady(() => loadSelectorAgent());
+    // Don't continue with normal initialization in selector mode
+  } else {
+    // Check for existing queue
+    if (window.PWX_QUEUE && Array.isArray(window.PWX_QUEUE)) {
+      // Process queued method calls
+      window.PWX_QUEUE.forEach(([method, ...args]) => {
+        if (typeof pwx[method] === 'function') {
+          pwx[method](...args);
+        }
+      });
+    }
+
+    // Auto-initialize when DOM is ready
+    domReady(async () => {
+      // Check if auto-init is disabled via script tag
+      const scripts = document.querySelectorAll('script[data-pwx-auto-init="false"]');
+      if (scripts.length > 0) {
+        logger.debug('Auto-init disabled via script attribute');
+        return;
+      }
+
+      // Check if customer slug is configured
+      const scriptWithCustomer = document.querySelector('script[data-pwx-customer]');
+      if (!scriptWithCustomer && !window.PWX_CONFIG) {
+        logger.debug('No customer configured, skipping auto-init');
+        return;
+      }
+
+      // Initialize
+      try {
+        await pwx.init();
+      } catch (error) {
+        logger.error('Auto-initialization failed:', error.message);
       }
     });
   }
-
-  // Auto-initialize when DOM is ready
-  domReady(async () => {
-    // Check if auto-init is disabled via script tag
-    const scripts = document.querySelectorAll('script[data-pwx-auto-init="false"]');
-    if (scripts.length > 0) {
-      logger.debug('Auto-init disabled via script attribute');
-      return;
-    }
-
-    // Check if customer slug is configured
-    const scriptWithCustomer = document.querySelector('script[data-pwx-customer]');
-    if (!scriptWithCustomer && !window.PWX_CONFIG) {
-      logger.debug('No customer configured, skipping auto-init');
-      return;
-    }
-
-    // Initialize
-    try {
-      await pwx.init();
-    } catch (error) {
-      logger.error('Auto-initialization failed:', error.message);
-    }
-  });
 }
 
 // ========================================
