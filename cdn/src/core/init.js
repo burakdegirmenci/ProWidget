@@ -421,6 +421,13 @@ class PWX extends EventEmitter {
     // Determine target element
     let target = placement.selector ? document.querySelector(placement.selector) : null;
 
+    // If selector not found, retry with delay (for dynamic content like Ticimax)
+    if (!target && placement.selector && placement.selector !== 'body') {
+      logger.debug(`PWX: Selector "${placement.selector}" not found, will retry...`);
+      this._retryPlacement(widget, placement, 3, 500);
+      return;
+    }
+
     // Fallback to autoRenderTarget or body
     if (!target) {
       const fallbackSelector = config.get('widgets.autoRenderTarget');
@@ -484,34 +491,123 @@ class PWX extends EventEmitter {
    * @returns {Object} Parsed placement { selector, position }
    */
   _parsePlacement(placement) {
+    const defaultPlacement = {
+      selector: config.get('widgets.autoRenderTarget') || '#pwx-widgets',
+      position: 'append'
+    };
+
     // Default
     if (!placement) {
+      return defaultPlacement;
+    }
+
+    // Object format: { selector, position }
+    if (typeof placement === 'object') {
       return {
-        selector: config.get('widgets.autoRenderTarget') || '#pwx-widgets',
-        position: 'append'
+        selector: placement.selector || defaultPlacement.selector,
+        position: placement.position || 'append'
       };
     }
 
-    // String format: direct CSS selector
+    // String format - try JSON parse first for {"selector":"...", "position":"prepend"}
     if (typeof placement === 'string') {
+      if (placement.startsWith('{')) {
+        try {
+          const parsed = JSON.parse(placement);
+          return {
+            selector: parsed.selector || placement,
+            position: parsed.position || 'append'
+          };
+        } catch (e) {
+          // Not valid JSON, use as selector
+        }
+      }
       return {
         selector: placement,
         position: 'append'
       };
     }
 
-    // Object format: { selector, position }
-    if (typeof placement === 'object') {
-      return {
-        selector: placement.selector || config.get('widgets.autoRenderTarget'),
-        position: placement.position || 'append'
-      };
+    return defaultPlacement;
+  }
+
+  /**
+   * Retry placement for dynamic content
+   * Waits for selector to appear in DOM
+   *
+   * @param {Object} widget - Widget configuration
+   * @param {Object} placement - Parsed placement
+   * @param {number} retries - Number of retries remaining
+   * @param {number} delay - Delay between retries in ms
+   */
+  _retryPlacement(widget, placement, retries, delay) {
+    if (retries <= 0) {
+      logger.warn(`PWX: Selector "${placement.selector}" not found after retries, using body`);
+      // Create container in body as fallback
+      this._createContainerInTarget(widget, placement, document.body);
+      return;
     }
 
-    return {
-      selector: config.get('widgets.autoRenderTarget') || '#pwx-widgets',
-      position: 'append'
-    };
+    setTimeout(() => {
+      const target = document.querySelector(placement.selector);
+      if (target) {
+        logger.debug(`PWX: Found "${placement.selector}" on retry`);
+        this._createContainerInTarget(widget, placement, target);
+      } else {
+        this._retryPlacement(widget, placement, retries - 1, delay);
+      }
+    }, delay);
+  }
+
+  /**
+   * Create container in specific target element
+   *
+   * @param {Object} widget - Widget configuration
+   * @param {Object} placement - Parsed placement
+   * @param {HTMLElement} target - Target element
+   */
+  _createContainerInTarget(widget, placement, target) {
+    // Create container element
+    const container = document.createElement('div');
+    container.dataset.pwxWidget = widget.type.toLowerCase();
+    container.dataset.pwxWidgetId = widget.id;
+    container.dataset.pwxAutoRendered = 'true';
+
+    if (widget.name) {
+      container.dataset.pwxName = widget.name;
+    }
+
+    if (placement.selector) {
+      container.dataset.pwxPlacement = placement.selector;
+    }
+
+    if (widget.settings && typeof widget.settings === 'object') {
+      Object.entries(widget.settings).forEach(([key, value]) => {
+        const attrName = `pwx${key.charAt(0).toUpperCase()}${key.slice(1)}`;
+        container.dataset[attrName] = typeof value === 'object' ? JSON.stringify(value) : value;
+      });
+    }
+
+    if (widget.type === 'custom') {
+      if (widget.template) {
+        container.dataset.pwxTemplate = JSON.stringify(widget.template);
+      }
+      if (widget.customData) {
+        container.dataset.pwxCustomData = JSON.stringify(widget.customData);
+      }
+    }
+
+    // Apply placement position
+    if (placement.position === 'prepend') {
+      target.prepend(container);
+    } else {
+      target.appendChild(container);
+    }
+
+    logger.debug(`Created container for widget: ${widget.type} (${widget.id}) at ${placement.selector || 'body'}`);
+
+    // Trigger scan to mount the widget
+    loader.scan(container.parentElement);
   }
 
   /**

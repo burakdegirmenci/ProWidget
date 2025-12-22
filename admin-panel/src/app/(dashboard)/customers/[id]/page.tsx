@@ -39,9 +39,9 @@ import {
   LoadingOverlay,
 } from '@/components/ui';
 import { SelectorModal } from '@/components/widgets/SelectorModal';
-import { customersService } from '@/services';
+import { customersService, templatesService } from '@/services';
 import { formatDate, copyToClipboard, cn } from '@/lib/utils';
-import type { Customer, WidgetConfig, Theme, XmlFeed, WidgetType } from '@/types';
+import type { Customer, WidgetConfig, Theme, XmlFeed, WidgetType, CustomTemplate } from '@/types';
 
 // ========================================
 // Tab Types
@@ -123,6 +123,7 @@ export default function CustomerDetailPage() {
   const [activeTab, setActiveTab] = useState<TabType>('general');
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [widgets, setWidgets] = useState<WidgetConfig[]>([]);
+  const [templates, setTemplates] = useState<CustomTemplate[]>([]);
   const [theme, setTheme] = useState<Theme | null>(null);
   const [feed, setFeed] = useState<XmlFeed | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -130,6 +131,7 @@ export default function CustomerDetailPage() {
   const [isWidgetModalOpen, setIsWidgetModalOpen] = useState(false);
   const [isSelectorModalOpen, setIsSelectorModalOpen] = useState(false);
   const [selectedPlacement, setSelectedPlacement] = useState<string>('');
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
 
   // Forms
   const customerForm = useForm<z.infer<typeof customerSchema>>({
@@ -160,15 +162,17 @@ export default function CustomerDetailPage() {
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [customerData, widgetsData, themeData, feedsData] = await Promise.all([
+      const [customerData, widgetsData, templatesData, themeData, feedsData] = await Promise.all([
         customersService.getById(customerId),
         customersService.getWidgets(customerId).catch(() => []),
+        templatesService.getByCustomer(customerId).catch(() => []),
         customersService.getTheme(customerId).catch(() => null),
         customersService.getFeeds(customerId).catch(() => []),
       ]);
 
       setCustomer(customerData);
       setWidgets(widgetsData);
+      setTemplates(templatesData);
       setTheme(themeData);
       // Use the first feed if available (UI supports single feed for simplicity)
       const feedData = feedsData.length > 0 ? feedsData[0] : null;
@@ -229,16 +233,24 @@ export default function CustomerDetailPage() {
 
   // Create widget
   const onCreateWidget = async (data: z.infer<typeof widgetSchema>) => {
+    // Validate template selection for custom widgets
+    if (data.type === 'CUSTOM' && !selectedTemplateId) {
+      toast.error('Özel widget için template seçmelisiniz');
+      return;
+    }
+
     setIsSaving(true);
     try {
       await customersService.createWidget(customerId, {
         type: data.type,
         name: data.name,
         placement: selectedPlacement || undefined,
+        templateId: data.type === 'CUSTOM' ? selectedTemplateId : undefined,
       });
       setIsWidgetModalOpen(false);
       widgetForm.reset();
       setSelectedPlacement('');
+      setSelectedTemplateId('');
       toast.success('Widget oluşturuldu');
       fetchData();
     } catch (error: any) {
@@ -678,6 +690,7 @@ export default function CustomerDetailPage() {
           setIsWidgetModalOpen(false);
           widgetForm.reset();
           setSelectedPlacement('');
+          setSelectedTemplateId('');
         }}
         title="Yeni Widget Oluştur"
         size="lg"
@@ -689,6 +702,33 @@ export default function CustomerDetailPage() {
               label="Widget Tipi"
               options={widgetTypeOptions}
             />
+
+            {/* Template Seçimi - sadece CUSTOM tipinde göster */}
+            {widgetForm.watch('type') === 'CUSTOM' && (
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                  Template <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={selectedTemplateId}
+                  onChange={(e) => setSelectedTemplateId(e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                >
+                  <option value="">Template seçin...</option>
+                  {templates.map((template) => (
+                    <option key={template.id} value={template.id}>
+                      {template.name}
+                    </option>
+                  ))}
+                </select>
+                {templates.length === 0 && (
+                  <p className="mt-1.5 text-xs text-amber-600">
+                    Henüz template oluşturmadınız. Önce Template sekmesinden bir template oluşturun.
+                  </p>
+                )}
+              </div>
+            )}
+
             <Input
               {...widgetForm.register('name')}
               label="Widget Adı"
@@ -731,6 +771,7 @@ export default function CustomerDetailPage() {
                 setIsWidgetModalOpen(false);
                 widgetForm.reset();
                 setSelectedPlacement('');
+                setSelectedTemplateId('');
               }}
             >
               İptal
