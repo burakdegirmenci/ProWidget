@@ -22,6 +22,9 @@ import {
   Key,
   MousePointer2,
   Code2,
+  Pencil,
+  ToggleLeft,
+  ToggleRight,
 } from 'lucide-react';
 import {
   Card,
@@ -79,6 +82,12 @@ const widgetSchema = z.object({
   name: z.string().min(2, 'Isim en az 2 karakter olmali'),
 });
 
+const editWidgetSchema = z.object({
+  name: z.string().min(2, 'Isim en az 2 karakter olmali'),
+  placement: z.string().optional(),
+  isActive: z.boolean(),
+});
+
 const themeSchema = z.object({
   primaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Geçerli bir renk kodu girin'),
   secondaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Geçerli bir renk kodu girin'),
@@ -129,6 +138,8 @@ export default function CustomerDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isWidgetModalOpen, setIsWidgetModalOpen] = useState(false);
+  const [isEditWidgetModalOpen, setIsEditWidgetModalOpen] = useState(false);
+  const [editingWidget, setEditingWidget] = useState<WidgetConfig | null>(null);
   const [isSelectorModalOpen, setIsSelectorModalOpen] = useState(false);
   const [selectedPlacement, setSelectedPlacement] = useState<string>('');
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
@@ -141,6 +152,11 @@ export default function CustomerDetailPage() {
   const widgetForm = useForm<z.infer<typeof widgetSchema>>({
     resolver: zodResolver(widgetSchema),
     defaultValues: { type: 'CAROUSEL' as WidgetType, name: '' },
+  });
+
+  const editWidgetForm = useForm<z.infer<typeof editWidgetSchema>>({
+    resolver: zodResolver(editWidgetSchema),
+    defaultValues: { name: '', placement: '', isActive: true },
   });
 
   const themeForm = useForm<z.infer<typeof themeSchema>>({
@@ -270,6 +286,58 @@ export default function CustomerDetailPage() {
       fetchData();
     } catch (error: any) {
       toast.error(error.message || 'Silme başarısız');
+    }
+  };
+
+  // Open edit widget modal
+  const handleOpenEditWidget = (widget: WidgetConfig) => {
+    setEditingWidget(widget);
+    setSelectedPlacement(widget.placement || '');
+    setSelectedTemplateId(widget.templateId || '');
+    editWidgetForm.reset({
+      name: widget.name,
+      placement: widget.placement || '',
+      isActive: widget.isActive,
+    });
+    setIsEditWidgetModalOpen(true);
+  };
+
+  // Save edited widget
+  const onSaveEditWidget = async (data: z.infer<typeof editWidgetSchema>) => {
+    if (!editingWidget) return;
+
+    setIsSaving(true);
+    try {
+      await customersService.updateWidget(customerId, editingWidget.id, {
+        name: data.name,
+        placement: selectedPlacement || undefined,
+        isActive: data.isActive,
+        templateId: editingWidget.type === 'CUSTOM' ? selectedTemplateId : undefined,
+      });
+      setIsEditWidgetModalOpen(false);
+      setEditingWidget(null);
+      editWidgetForm.reset();
+      setSelectedPlacement('');
+      setSelectedTemplateId('');
+      toast.success('Widget güncellendi');
+      fetchData();
+    } catch (error: any) {
+      toast.error(error.message || 'Widget güncellenemedi');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Toggle widget active status
+  const handleToggleWidgetStatus = async (widget: WidgetConfig) => {
+    try {
+      await customersService.updateWidget(customerId, widget.id, {
+        isActive: !widget.isActive,
+      });
+      toast.success(widget.isActive ? 'Widget pasif yapıldı' : 'Widget aktif yapıldı');
+      fetchData();
+    } catch (error: any) {
+      toast.error(error.message || 'Durum değiştirilemedi');
     }
   };
 
@@ -505,35 +573,61 @@ export default function CustomerDetailPage() {
 
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {widgets.map((widget) => (
-                <Card key={widget.id}>
+                <Card key={widget.id} className={cn(!widget.isActive && 'opacity-60')}>
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between">
-                      <div>
-                        <h3 className="font-medium text-gray-900">{widget.name}</h3>
-                        <Badge size="sm" className="mt-1">
-                          {widget.type}
-                        </Badge>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-medium text-gray-900 truncate">{widget.name}</h3>
+                        <div className="mt-1 flex items-center gap-2">
+                          <Badge size="sm">{widget.type}</Badge>
+                          {widget.templateId && (
+                            <Badge size="sm" variant="info">Template</Badge>
+                          )}
+                        </div>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDeleteWidget(widget.id, widget.name)}
-                        className="text-red-600 hover:bg-red-50"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <div className="flex items-center gap-1 ml-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleOpenEditWidget(widget)}
+                          className="text-gray-600 hover:bg-gray-100"
+                          title="Düzenle"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteWidget(widget.id, widget.name)}
+                          className="text-red-600 hover:bg-red-50"
+                          title="Sil"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                     {widget.placement && (
                       <div className="mt-2">
-                        <code className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
+                        <code className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600 block truncate">
                           {widget.placement}
                         </code>
                       </div>
                     )}
-                    <div className="mt-3 text-sm text-gray-500">
+                    <div className="mt-3 flex items-center justify-between">
                       <Badge variant={widget.isActive ? 'success' : 'default'} size="sm">
                         {widget.isActive ? 'Aktif' : 'Pasif'}
                       </Badge>
+                      <button
+                        onClick={() => handleToggleWidgetStatus(widget)}
+                        className="text-gray-500 hover:text-gray-700 transition-colors"
+                        title={widget.isActive ? 'Pasif Yap' : 'Aktif Yap'}
+                      >
+                        {widget.isActive ? (
+                          <ToggleRight className="h-6 w-6 text-green-500" />
+                        ) : (
+                          <ToggleLeft className="h-6 w-6 text-gray-400" />
+                        )}
+                      </button>
                     </div>
                   </CardContent>
                 </Card>
@@ -778,6 +872,123 @@ export default function CustomerDetailPage() {
             </Button>
             <Button type="submit" isLoading={isSaving}>
               Oluştur
+            </Button>
+          </ModalFooter>
+        </form>
+      </Modal>
+
+      {/* Edit Widget Modal */}
+      <Modal
+        isOpen={isEditWidgetModalOpen}
+        onClose={() => {
+          setIsEditWidgetModalOpen(false);
+          setEditingWidget(null);
+          editWidgetForm.reset();
+          setSelectedPlacement('');
+          setSelectedTemplateId('');
+        }}
+        title="Widget Düzenle"
+        size="lg"
+      >
+        <form onSubmit={editWidgetForm.handleSubmit(onSaveEditWidget)}>
+          <div className="space-y-4">
+            {/* Widget Type (read-only) */}
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                Widget Tipi
+              </label>
+              <div className="flex items-center gap-2">
+                <Badge size="sm">{editingWidget?.type}</Badge>
+                <span className="text-xs text-gray-500">(Değiştirilemez)</span>
+              </div>
+            </div>
+
+            {/* Template Seçimi - sadece CUSTOM tipinde göster */}
+            {editingWidget?.type === 'CUSTOM' && (
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                  Template
+                </label>
+                <select
+                  value={selectedTemplateId}
+                  onChange={(e) => setSelectedTemplateId(e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                >
+                  <option value="">Template seçin...</option>
+                  {templates.map((template) => (
+                    <option key={template.id} value={template.id}>
+                      {template.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <Input
+              {...editWidgetForm.register('name')}
+              label="Widget Adı"
+              placeholder="Ana Sayfa Carousel"
+              error={editWidgetForm.formState.errors.name?.message}
+            />
+
+            {/* Placement Seçimi */}
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                Yerleşim (Placement)
+              </label>
+              <div className="flex items-center gap-2">
+                <Input
+                  value={selectedPlacement}
+                  onChange={(e) => setSelectedPlacement(e.target.value)}
+                  placeholder="#pwx-widgets"
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsSelectorModalOpen(true)}
+                  className="shrink-0"
+                >
+                  <MousePointer2 className="mr-2 h-4 w-4" />
+                  Görsel Seç
+                </Button>
+              </div>
+              <p className="mt-1.5 text-xs text-gray-500">
+                CSS selector girin veya &quot;Görsel Seç&quot; ile siteden tıklayarak seçin
+              </p>
+            </div>
+
+            {/* Active Status */}
+            <div>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  {...editWidgetForm.register('isActive')}
+                  className="h-5 w-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                />
+                <div>
+                  <span className="text-sm font-medium text-gray-700">Aktif</span>
+                  <p className="text-xs text-gray-500">Widget sitede görüntülensin</p>
+                </div>
+              </label>
+            </div>
+          </div>
+          <ModalFooter className="-mx-6 -mb-4 mt-6">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setIsEditWidgetModalOpen(false);
+                setEditingWidget(null);
+                editWidgetForm.reset();
+                setSelectedPlacement('');
+                setSelectedTemplateId('');
+              }}
+            >
+              İptal
+            </Button>
+            <Button type="submit" isLoading={isSaving} leftIcon={<Save className="h-4 w-4" />}>
+              Kaydet
             </Button>
           </ModalFooter>
         </form>
