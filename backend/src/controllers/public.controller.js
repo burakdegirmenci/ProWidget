@@ -156,7 +156,7 @@ const getData = asyncHandler(async (req, res) => {
       title: p.title,
       price: parseFloat(p.price),
       salePrice: p.salePrice ? parseFloat(p.salePrice) : null,
-      image: p.imageUrl,
+      imageLink: p.imageUrl,
       url: p.productUrl,
       brand: p.brand
     }));
@@ -205,7 +205,7 @@ const getWidgetData = asyncHandler(async (req, res) => {
       title: p.title,
       price: parseFloat(p.price),
       salePrice: p.salePrice ? parseFloat(p.salePrice) : null,
-      image: p.imageUrl,
+      imageLink: p.imageUrl,
       url: p.productUrl,
       brand: p.brand
     }))
