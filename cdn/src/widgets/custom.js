@@ -501,6 +501,7 @@ class CustomWidget extends BaseWidget {
   /**
    * Execute inline scripts from template
    * Note: innerHTML doesn't execute script tags, so we need to do it manually
+   * Scripts are executed in global scope (appended to document.head)
    */
   _executeScripts() {
     const root = this.shadowRoot || this.container;
@@ -517,8 +518,11 @@ class CustomWidget extends BaseWidget {
       // Copy inline content
       newScript.textContent = oldScript.textContent;
 
-      // Replace old script with new one (this triggers execution)
-      oldScript.parentNode.replaceChild(newScript, oldScript);
+      // Remove from shadow/container DOM
+      oldScript.remove();
+
+      // Append to document.head for global scope execution
+      document.head.appendChild(newScript);
     });
   }
 
