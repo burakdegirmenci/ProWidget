@@ -216,8 +216,11 @@ class WidgetLoader extends EventEmitter {
       state: WIDGET_STATE.PENDING
     };
 
-    // Check for lazy loading
-    if (config.get('widgets.lazyLoad') && this._observer) {
+    // Check if widget should load immediately (bypass lazy loading)
+    const immediate = attrs.immediate === 'true' || attrs.immediate === true;
+
+    // Check for lazy loading (skip if immediate)
+    if (!immediate && config.get('widgets.lazyLoad') && this._observer) {
       if (!isInViewport(container, config.get('widgets.observerThreshold'))) {
         // Add to pending and observe
         this._pending.set(container, widgetConfig);
@@ -225,6 +228,11 @@ class WidgetLoader extends EventEmitter {
         logger.debug(`Widget ${widgetId} queued for lazy loading`);
         return null;
       }
+    }
+
+    // Log immediate mount
+    if (immediate) {
+      logger.debug(`Widget ${widgetId} marked as immediate, mounting now`);
     }
 
     // Mount immediately
