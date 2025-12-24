@@ -327,6 +327,9 @@ class CustomWidget extends BaseWidget {
       // Bind safe events
       this._bindSafeEvents();
 
+      // Execute inline scripts
+      this._executeScripts();
+
       // Initialize countdown timers if any
       this._initCountdowns();
 
@@ -493,6 +496,30 @@ class CustomWidget extends BaseWidget {
         ${html}
       </div>
     `;
+  }
+
+  /**
+   * Execute inline scripts from template
+   * Note: innerHTML doesn't execute script tags, so we need to do it manually
+   */
+  _executeScripts() {
+    const root = this.shadowRoot || this.container;
+    const scripts = root.querySelectorAll('script');
+
+    scripts.forEach(oldScript => {
+      const newScript = document.createElement('script');
+
+      // Copy attributes
+      Array.from(oldScript.attributes).forEach(attr => {
+        newScript.setAttribute(attr.name, attr.value);
+      });
+
+      // Copy inline content
+      newScript.textContent = oldScript.textContent;
+
+      // Replace old script with new one (this triggers execution)
+      oldScript.parentNode.replaceChild(newScript, oldScript);
+    });
   }
 
   /**
