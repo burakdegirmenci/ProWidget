@@ -19,8 +19,9 @@ const sanitizeHtml = (html) => {
   temp.innerHTML = html;
 
   // Dangerous tags to remove completely
+  // Note: 'script' and 'style' allowed for advanced widget templates
   const dangerousTags = [
-    'script', 'iframe', 'object', 'embed', 'link', 'style',
+    'iframe', 'object', 'embed', 'link',
     'meta', 'base', 'form', 'input', 'textarea', 'select', 'button'
   ];
 
