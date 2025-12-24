@@ -30,7 +30,9 @@ const ALLOWED_TAGS = [
   // Forms (limited)
   'form', 'button', 'input', 'label', 'select', 'option', 'optgroup', 'textarea',
   // Other
-  'time', 'abbr', 'address', 'cite', 'q', 'wbr'
+  'time', 'abbr', 'address', 'cite', 'q', 'wbr',
+  // Advanced templates (admin-only)
+  'script', 'style'
 ];
 
 /**
@@ -57,9 +59,10 @@ const ALLOWED_ATTR = [
 
 /**
  * Forbidden HTML tags (explicitly blocked)
+ * Note: script and style removed - allowed for advanced admin templates
  */
 const FORBID_TAGS = [
-  'script', 'iframe', 'object', 'embed', 'link', 'style', 'meta', 'base',
+  'iframe', 'object', 'embed', 'link', 'meta', 'base',
   'applet', 'frame', 'frameset', 'layer', 'ilayer', 'bgsound', 'xml'
 ];
 
