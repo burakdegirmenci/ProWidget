@@ -171,10 +171,8 @@ function validateHtml(html) {
 
   const errors = [];
 
-  // Check for script tags
-  if (/<script[\s>]/i.test(html)) {
-    errors.push('Script tags are not allowed');
-  }
+  // Note: Script tags are now allowed for advanced widget templates
+  // Security is handled by admin-only template creation
 
   // Check for iframe tags
   if (/<iframe[\s>]/i.test(html)) {
