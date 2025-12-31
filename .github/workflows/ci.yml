@@ -205,7 +205,7 @@ jobs:
           fi
 
       - name: Build Backend Image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile.backend
@@ -215,7 +215,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Build Admin Panel Image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile.admin
@@ -227,7 +227,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Build XML Parser Image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile.xml-parser
